@@ -1,0 +1,86 @@
+'use client'
+
+import { useState } from 'react'
+import FollowUpCard from '@/components/follow-ups/FollowUpCard'
+import FollowUpForm from '@/components/follow-ups/FollowUpForm'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
+import type { FollowUp } from '@/types/followUp'
+
+interface FollowUpsTabProps {
+  initialFollowUps: FollowUp[]
+  clientId: string
+  realtorId: string
+}
+
+export default function FollowUpsTab({ initialFollowUps, clientId, realtorId }: FollowUpsTabProps) {
+  const [followUps, setFollowUps] = useState<FollowUp[]>(initialFollowUps)
+  const [showForm, setShowForm] = useState(false)
+
+  function handleDelete(id: string) {
+    setFollowUps((prev) => prev.filter((f) => f.id !== id))
+  }
+
+  function handleComplete(id: string) {
+    setFollowUps((prev) =>
+      prev.map((f) => f.id === id ? { ...f, completed: true, completed_at: new Date().toISOString() } : f)
+    )
+  }
+
+  async function handleSuccess() {
+    setShowForm(false)
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('follow_ups')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('scheduled_date', { ascending: false })
+    if (data) setFollowUps(data as FollowUp[])
+  }
+
+  const pending = followUps.filter((f) => !f.completed)
+  const completed = followUps.filter((f) => f.completed)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">
+          {pending.length} pending · {completed.length} completed
+        </p>
+        {!showForm && (
+          <Button size="sm" onClick={() => setShowForm(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Follow-up
+          </Button>
+        )}
+      </div>
+
+      {showForm && (
+        <FollowUpForm
+          clientId={clientId}
+          realtorId={realtorId}
+          onSuccess={handleSuccess}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
+
+      {followUps.length === 0 && !showForm ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <p className="text-sm">No follow-ups scheduled yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {[...pending, ...completed].map((fu) => (
+            <FollowUpCard
+              key={fu.id}
+              followUp={fu}
+              onDelete={handleDelete}
+              onComplete={handleComplete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,68 @@
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import ClientList from '@/components/clients/ClientList'
+import ClientFilters from '@/components/clients/ClientFilters'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { Plus } from 'lucide-react'
+import type { Client } from '@/types/client'
+import { Suspense } from 'react'
+
+interface SearchParams {
+  search?: string
+  status?: string
+  type?: string
+}
+
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}) {
+  const params = await searchParams
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  let query = supabase
+    .from('clients')
+    .select('*')
+    .eq('realtor_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (params.search) {
+    query = query.ilike('name', `%${params.search}%`)
+  }
+  if (params.status) {
+    query = query.eq('status', params.status)
+  }
+  if (params.type) {
+    query = query.eq('client_type', params.type)
+  }
+
+  const { data: clients } = await query
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
+          <p className="text-sm text-muted-foreground">
+            {clients?.length ?? 0} total client{(clients?.length ?? 0) !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <Link href="/clients/new" className={cn(buttonVariants())}>
+          <Plus className="w-4 h-4 mr-2" />
+          New Client
+        </Link>
+      </div>
+
+      <Suspense>
+        <ClientFilters />
+      </Suspense>
+
+      <ClientList clients={(clients ?? []) as Client[]} />
+    </div>
+  )
+}
