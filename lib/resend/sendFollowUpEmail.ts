@@ -9,6 +9,7 @@ interface FollowUpEmailParams {
   clientUrl: string
 }
 
+// RESEND_FROM_EMAIL must be a verified sender address or domain in your Resend account
 export async function sendFollowUpEmail({
   to,
   realtorName,

@@ -15,9 +15,11 @@ export default function ClientFilters() {
   const status = searchParams.get('status') ?? ''
   const type = searchParams.get('type') ?? ''
 
+  // Wrapped in startTransition so the navigation doesn't block other UI updates
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
       const params = new URLSearchParams(searchParams.toString())
+      // Empty string means "remove filter" — keep the URL clean
       Object.entries(updates).forEach(([key, value]) => {
         if (value) params.set(key, value)
         else params.delete(key)
@@ -47,6 +49,7 @@ export default function ClientFilters() {
       <Input
         placeholder="Search clients..."
         defaultValue={search}
+        // Debounce search so we don't push a URL update on every keystroke
         onChange={(e) => {
           const val = e.target.value
           const timeout = setTimeout(() => updateParams({ search: val }), 300)

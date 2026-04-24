@@ -18,7 +18,7 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // Server component — cookies will be set by middleware
+            // Server Components can't set cookies directly — the middleware (proxy.ts) handles it instead
           }
         },
       },

@@ -15,6 +15,7 @@ interface SearchParams {
   type?: string
 }
 
+// searchParams is a Promise in Next.js 15+ app router — must be awaited before use
 export default async function ClientsPage({
   searchParams,
 }: {
@@ -25,6 +26,7 @@ export default async function ClientsPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Build the query dynamically — filters are only applied when the param is present
   let query = supabase
     .from('clients')
     .select('*')

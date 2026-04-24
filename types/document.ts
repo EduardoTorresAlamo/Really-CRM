@@ -1,6 +1,7 @@
 export type DocType = 'id' | 'pre_approval_letter' | 'contract' | 'other'
 export type DocStatus = 'pending' | 'received' | 'verified'
 
+/** Mirrors the `documents` table row. file_url points to Supabase Storage (private bucket). */
 export interface Document {
   id: string
   client_id: string

@@ -28,12 +28,15 @@ export default function AvatarUpload({ userId, currentUrl, name, onUpload }: Ava
     if (!file) return
 
     const ext = file.name.split('.').pop()
+    // Fixed filename per user — uploading a new photo overwrites the old one automatically
     const path = `${userId}/avatar.${ext}`
 
+    // Show the local file immediately so the UI feels instant, even before upload completes
     setPreview(URL.createObjectURL(file))
     setUploading(true)
 
     try {
+      // 'avatars' bucket is public — URLs are stable and don't need signed access
       const url = await uploadFile('avatars', path, file)
       onUpload(url)
       toast.success('Photo updated')

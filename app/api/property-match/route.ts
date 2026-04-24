@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { parsePropertyListing, matchClientsToProperty } from '@/lib/claude/propertyMatch'
 import type { Client } from '@/types/client'
 
+// POST { url: string } → { property: ParsedProperty, matches: MatchResult[] }
+// Orchestrates two Claude calls: first to parse the listing, then to rank active buyer clients against it
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

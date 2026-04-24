@@ -3,6 +3,7 @@ export type ClientStatus = 'active' | 'inactive' | 'closed'
 export type SaleType = 'cash' | 'loan'
 export type PropertyType = 'house' | 'condo' | 'apartment' | 'land' | 'commercial'
 
+/** Mirrors the `clients` table row. Fields from budget_min down are buyer-specific and null for sellers. */
 export interface Client {
   id: string
   realtor_id: string
@@ -14,8 +15,8 @@ export interface Client {
   notes: string | null
   budget_min: number | null
   budget_max: number | null
-  preferred_locations: string[] | null
-  property_types: PropertyType[] | null
+  preferred_locations: string[] | null  // stored as a Postgres text[] array
+  property_types: PropertyType[] | null // stored as a Postgres text[] array
   sale_type: SaleType | null
   bedrooms_min: number | null
   bedrooms_max: number | null

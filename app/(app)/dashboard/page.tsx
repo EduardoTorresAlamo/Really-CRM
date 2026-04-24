@@ -13,6 +13,7 @@ export default async function DashboardPage() {
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
+  // All 6 queries are independent — run them concurrently to avoid waterfall latency
   const [
     { count: totalClients },
     { count: activeBuyers },
@@ -44,6 +45,7 @@ export default async function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* `as any` because the nested join shape `clients(id, name)` isn't typed by the Supabase codegen */}
         <TodayFollowUps followUps={(todayFollowUps ?? []) as any} />
         <RecentClients clients={(recentClients ?? []) as Client[]} />
       </div>

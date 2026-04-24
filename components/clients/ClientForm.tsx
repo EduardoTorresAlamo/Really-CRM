@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import { X } from 'lucide-react'
 import type { Client, ClientType, ClientStatus, SaleType, PropertyType } from '@/types/client'
 
+// Shared options list so toggling property types works against a stable reference
 const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
   { value: 'house', label: 'House' },
   { value: 'condo', label: 'Condo' },
@@ -25,6 +26,8 @@ const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
   { value: 'commercial', label: 'Commercial' },
 ]
 
+// Budget/bedrooms/bathrooms are strings here because HTML inputs always return strings.
+// They get converted to numbers (or null) in onSubmit before hitting the DB.
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.union([z.string().email('Invalid email'), z.literal('')]).optional(),
@@ -43,6 +46,8 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+// mode='create' inserts a new client + writes a "created" history event
+// mode='edit' updates the existing client + writes an "edited" history event
 interface ClientFormProps {
   client?: Client
   userId: string
@@ -83,6 +88,7 @@ export default function ClientForm({ client, userId, mode }: ClientFormProps) {
     },
   })
 
+  // Watch client_type so the "Property Preferences" section shows/hides reactively
   const clientType = watch('client_type')
 
   function togglePropertyType(pt: PropertyType) {
@@ -91,6 +97,7 @@ export default function ClientForm({ client, userId, mode }: ClientFormProps) {
     )
   }
 
+  // Enter-to-add tag input — prevent default so it doesn't submit the parent form
   function addLocation(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -107,6 +114,7 @@ export default function ClientForm({ client, userId, mode }: ClientFormProps) {
   }
 
   async function onSubmit(values: FormValues) {
+    // Coerce empty strings to null so the DB doesn't store empty strings for optional numeric fields
     const payload = {
       realtor_id: userId,
       name: values.name,
@@ -247,7 +255,7 @@ export default function ClientForm({ client, userId, mode }: ClientFormProps) {
         </CardContent>
       </Card>
 
-      {/* Preferences (for buyers) */}
+      {/* Preferences only apply to buyers — sellers don't have budget/location requirements */}
       {clientType === 'buyer' && (
         <Card>
           <CardHeader><CardTitle>Property Preferences</CardTitle></CardHeader>

@@ -22,6 +22,7 @@ export default function FollowUpCard({ followUp, onDelete, onComplete }: FollowU
   const [sendingEmail, setSendingEmail] = useState(false)
 
   const date = parseISO(followUp.scheduled_date)
+  // isPast() returns true for today too, so explicitly exclude today to keep the two states separate
   const isOverdue = !followUp.completed && isPast(date) && !isToday(date)
   const isDueToday = !followUp.completed && isToday(date)
 
@@ -47,6 +48,8 @@ export default function FollowUpCard({ followUp, onDelete, onComplete }: FollowU
     onDelete(followUp.id)
   }
 
+  // Email goes through an API route rather than calling Resend directly —
+  // the API key can't be exposed to the client
   async function handleSendEmail() {
     setSendingEmail(true)
     try {

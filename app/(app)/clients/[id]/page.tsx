@@ -22,6 +22,7 @@ export default async function ClientDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // All four queries are independent — run concurrently to avoid round-trip waterfall
   const [clientResult, docsResult, followUpsResult, historyResult] = await Promise.all([
     supabase.from('clients').select('*').eq('id', id).eq('realtor_id', user.id).single(),
     supabase.from('documents').select('*').eq('client_id', id).order('created_at', { ascending: false }),
@@ -29,6 +30,7 @@ export default async function ClientDetailPage({
     supabase.from('client_history').select('*').eq('client_id', id).order('created_at', { ascending: false }),
   ])
 
+  // No data means either the client doesn't exist or RLS blocked access — either way, 404
   if (!clientResult.data) notFound()
 
   const client = clientResult.data as Client

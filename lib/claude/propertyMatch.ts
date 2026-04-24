@@ -4,6 +4,7 @@ import type { Client } from '@/types/client'
 
 const client = new Anthropic()
 
+// Function to parse property listing data using Claude AI
 export async function parsePropertyListing(url: string): Promise<ParsedProperty> {
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -37,7 +38,7 @@ fields you truly cannot determine.`,
     const parsed = JSON.parse(text.trim())
     return parsed as ParsedProperty
   } catch {
-    // Try to extract JSON from the response
+    // Try to extract JSON from the response if initial parsing fails
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]) as ParsedProperty
@@ -46,6 +47,7 @@ fields you truly cannot determine.`,
   }
 }
 
+// Interface for condensed client information
 interface CondensedClient {
   id: string
   name: string
@@ -59,6 +61,7 @@ interface CondensedClient {
   bathroomsMin: number | null
 }
 
+// Function to condense client data for matching
 function condensedView(c: Client): CondensedClient {
   return {
     id: c.id,
@@ -74,6 +77,7 @@ function condensedView(c: Client): CondensedClient {
   }
 }
 
+// Function to match clients to a property using Claude AI
 export async function matchClientsToProperty(
   property: ParsedProperty,
   clients: Client[]
@@ -126,6 +130,7 @@ ${JSON.stringify(condensed, null, 2)}`,
     const parsed = JSON.parse(text.trim())
     return parsed as MatchResult[]
   } catch {
+    // Try to extract JSON array from the response if initial parsing fails
     const jsonMatch = text.match(/\[[\s\S]*\]/)
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]) as MatchResult[]

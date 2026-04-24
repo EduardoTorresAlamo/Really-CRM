@@ -17,6 +17,7 @@ export async function proxy(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
+        // Must set cookies on both the request and a fresh response — Supabase SSR requirement
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
@@ -36,7 +37,8 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Protect all app routes
+  // Redirect unauthenticated users away from protected app routes
+  // /auth/callback is intentionally absent here — it must stay public for the magic link to land
   if ((!user && pathname.startsWith('/dashboard')) ||
       (!user && pathname.startsWith('/clients')) ||
       (!user && pathname.startsWith('/profile')) ||

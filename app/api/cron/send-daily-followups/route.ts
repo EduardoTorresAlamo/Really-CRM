@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
+  // Fetch follow-ups that are not completed, not sent, and scheduled for today or earlier
   const { data: followUps } = await supabase
     .from('follow_ups')
     .select('*, clients(id, name), profiles(name, email)')
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
     if (!client || !profile?.email) continue
 
     try {
+      // Send the follow-up email with relevant details
       await sendFollowUpEmail({
         to: profile.email,
         realtorName: profile.name,
@@ -47,10 +49,12 @@ export async function GET(request: NextRequest) {
         clientUrl: `${appUrl}/clients/${client.id}`,
       })
 
+      // Mark the follow-up as sent in the database
       await supabase.from('follow_ups').update({ email_sent: true }).eq('id', fu.id)
       sent++
-    } catch {
-      // Continue processing others if one fails
+    } catch (err) {
+      // One failed email shouldn't abort the rest — log it so it shows up in Vercel logs
+      console.error(`Failed to send follow-up email for follow-up ${fu.id}:`, err)
     }
   }
 

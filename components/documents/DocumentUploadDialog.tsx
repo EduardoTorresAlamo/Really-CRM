@@ -55,6 +55,8 @@ export default function DocumentUploadDialog({
 
     setUploading(true)
     try {
+      // Path convention: {realtorId}/{clientId}/{timestamp}_{filename}
+      // Namespaced by realtor first so RLS bucket policies can be scoped per user
       const path = `${realtorId}/${clientId}/${Date.now()}_${file.name}`
       const fileUrl = await uploadFile('documents', path, file)
 
@@ -80,6 +82,7 @@ export default function DocumentUploadDialog({
     }
   }
 
+  // Reset all local state on close so the dialog is clean if reopened
   function handleClose() {
     setFile(null)
     setDocType('other')

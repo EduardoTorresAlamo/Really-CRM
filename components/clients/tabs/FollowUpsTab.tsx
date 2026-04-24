@@ -27,6 +27,8 @@ export default function FollowUpsTab({ initialFollowUps, clientId, realtorId }: 
     )
   }
 
+  // Re-fetch from DB after a new follow-up is created so we have the server-generated id and timestamps
+  // Supabase client is imported dynamically to avoid instantiating it on every render
   async function handleSuccess() {
     setShowForm(false)
     const { createClient } = await import('@/lib/supabase/client')
@@ -71,7 +73,8 @@ export default function FollowUpsTab({ initialFollowUps, clientId, realtorId }: 
         </div>
       ) : (
         <div className="space-y-2">
-          {[...pending, ...completed].map((fu) => (
+          {/* Show pending first so actionable items are always at the top */}
+        {[...pending, ...completed].map((fu) => (
             <FollowUpCard
               key={fu.id}
               followUp={fu}
