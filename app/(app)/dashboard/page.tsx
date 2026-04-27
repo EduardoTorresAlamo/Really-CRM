@@ -33,8 +33,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Welcome back</p>
+        <h1 className="text-3xl font-bold tracking-tight text-black">Dashboard</h1>
+        <p className="text-sm text-[#93939f] mt-1 uppercase tracking-widest font-mono text-xs">Welcome back</p>
       </div>
 
       <StatsCards

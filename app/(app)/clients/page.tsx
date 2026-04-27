@@ -49,8 +49,8 @@ export default async function ClientsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-black">Clients</h1>
+          <p className="text-xs text-[#93939f] mt-1 uppercase tracking-widest font-mono">
             {clients?.length ?? 0} total client{(clients?.length ?? 0) !== 1 ? 's' : ''}
           </p>
         </div>

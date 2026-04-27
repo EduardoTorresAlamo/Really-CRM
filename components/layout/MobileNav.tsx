@@ -34,10 +34,10 @@ export default function MobileNav({ open, onClose }: MobileNavProps) {
               href={href}
               onClick={onClose}
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-[11px] text-sm transition-colors',
                 pathname === href || pathname.startsWith(href + '/')
-                  ? 'bg-gray-100 text-gray-900'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-[#f2f2f2] text-black font-medium'
+                  : 'text-[#93939f] hover:bg-[#f2f2f2] hover:text-[#1863dc]'
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />

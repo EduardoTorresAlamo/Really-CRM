@@ -30,39 +30,39 @@ function formatBudget(min: number | null, max: number | null): string {
 export default function ClientList({ clients }: ClientListProps) {
   if (clients.length === 0) {
     return (
-      <div className="text-center py-16 text-muted-foreground">
-        <p className="text-lg font-medium">No clients found</p>
+      <div className="text-center py-16 text-[#93939f]">
+        <p className="text-base font-medium text-black">No clients found</p>
         <p className="text-sm mt-1">Create your first client to get started.</p>
       </div>
     )
   }
 
   return (
-    <div className="rounded-lg border bg-white overflow-hidden">
+    <div className="rounded-[22px] border border-[#d9d9dd] bg-white overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="hidden md:table-cell">Budget</TableHead>
-            <TableHead className="hidden lg:table-cell">Locations</TableHead>
-            <TableHead className="hidden sm:table-cell">Added</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+          <TableRow className="border-b border-[#f2f2f2] hover:bg-transparent">
+            <TableHead className="text-xs font-mono uppercase tracking-widest text-[#93939f] h-11">Name</TableHead>
+            <TableHead className="text-xs font-mono uppercase tracking-widest text-[#93939f] h-11">Type</TableHead>
+            <TableHead className="text-xs font-mono uppercase tracking-widest text-[#93939f] h-11">Status</TableHead>
+            <TableHead className="hidden md:table-cell text-xs font-mono uppercase tracking-widest text-[#93939f] h-11">Budget</TableHead>
+            <TableHead className="hidden lg:table-cell text-xs font-mono uppercase tracking-widest text-[#93939f] h-11">Locations</TableHead>
+            <TableHead className="hidden sm:table-cell text-xs font-mono uppercase tracking-widest text-[#93939f] h-11">Added</TableHead>
+            <TableHead className="text-right text-xs font-mono uppercase tracking-widest text-[#93939f] h-11">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {clients.map((client) => (
-            <TableRow key={client.id}>
+            <TableRow key={client.id} className="border-b border-[#f2f2f2] hover:bg-[#fafafa] transition-colors">
               <TableCell className="font-medium">
                 <Link
                   href={`/clients/${client.id}`}
-                  className="hover:underline text-gray-900"
+                  className="font-medium text-black hover:text-[#1863dc] transition-colors"
                 >
                   {client.name}
                 </Link>
                 {client.email && (
-                  <p className="text-xs text-muted-foreground">{client.email}</p>
+                  <p className="text-xs text-[#93939f] mt-0.5">{client.email}</p>
                 )}
               </TableCell>
               <TableCell>
@@ -71,7 +71,7 @@ export default function ClientList({ clients }: ClientListProps) {
               <TableCell>
                 <ClientStatusBadge status={client.status} />
               </TableCell>
-              <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+              <TableCell className="hidden md:table-cell text-sm text-[#93939f]">
                 {formatBudget(client.budget_min, client.budget_max)}
               </TableCell>
               <TableCell className="hidden lg:table-cell">
@@ -79,23 +79,23 @@ export default function ClientList({ clients }: ClientListProps) {
                   {client.preferred_locations?.slice(0, 2).map((loc) => (
                     <span
                       key={loc}
-                      className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded"
+                      className="text-xs bg-[#f2f2f2] text-[#93939f] px-2 py-0.5 rounded-full font-mono uppercase tracking-wide"
                     >
                       {loc}
                     </span>
                   ))}
                   {(client.preferred_locations?.length ?? 0) > 2 && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-[#93939f]">
                       +{client.preferred_locations!.length - 2} more
                     </span>
                   )}
                 </div>
               </TableCell>
-              <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+              <TableCell className="hidden sm:table-cell text-sm text-[#93939f]">
                 {formatDistanceToNow(new Date(client.created_at), { addSuffix: true })}
               </TableCell>
               <TableCell className="text-right">
-                <Link href={`/clients/${client.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}>View</Link>
+                <Link href={`/clients/${client.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hover:text-[#1863dc]')}>View</Link>
               </TableCell>
             </TableRow>
           ))}

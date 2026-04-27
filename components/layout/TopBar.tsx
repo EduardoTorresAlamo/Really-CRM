@@ -34,9 +34,9 @@ export default function TopBar({ profile }: TopBarProps) {
 
   return (
     <>
-      <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6">
+      <header className="h-14 bg-white border-b border-[#d9d9dd] flex items-center justify-between px-4 md:px-6">
         <button
-          className="md:hidden p-1 rounded-md text-gray-600 hover:bg-gray-100"
+          className="md:hidden p-1 rounded-[8px] text-[#93939f] hover:bg-[#f2f2f2] hover:text-black transition-colors"
           onClick={() => setMobileOpen(true)}
         >
           <Menu className="w-5 h-5" />
@@ -48,7 +48,7 @@ export default function TopBar({ profile }: TopBarProps) {
                 <AvatarImage src={profile?.photo_url ?? undefined} alt={profile?.name ?? ''} />
                 <AvatarFallback className="text-xs">{initials}</AvatarFallback>
               </Avatar>
-              <span className="hidden sm:block text-sm font-medium text-gray-700">
+              <span className="hidden sm:block text-sm font-medium text-black">
                 {profile?.name ?? 'Realtor'}
               </span>
           </DropdownMenuTrigger>

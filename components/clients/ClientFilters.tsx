@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useCallback, useTransition } from 'react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 
 export default function ClientFilters() {
   const router = useRouter()
@@ -32,7 +31,7 @@ export default function ClientFilters() {
   )
 
   const statusOptions = [
-    { value: '', label: 'All Status' },
+    { value: '', label: 'All' },
     { value: 'active', label: 'Active' },
     { value: 'inactive', label: 'Inactive' },
     { value: 'closed', label: 'Closed' },
@@ -55,30 +54,38 @@ export default function ClientFilters() {
           const timeout = setTimeout(() => updateParams({ search: val }), 300)
           return () => clearTimeout(timeout)
         }}
-        className="sm:max-w-xs"
+        className="sm:max-w-xs rounded-full border-[#d9d9dd] focus:border-[#9b60aa] text-sm"
       />
-      <div className="flex gap-2">
+      <div className="flex gap-1.5 items-center">
+        <span className="text-xs font-mono uppercase tracking-widest text-[#93939f] mr-1">Status</span>
         {statusOptions.map((opt) => (
-          <Button
+          <button
             key={opt.value}
-            size="sm"
-            variant={status === opt.value ? 'default' : 'outline'}
             onClick={() => updateParams({ status: opt.value })}
+            className={`px-3 py-1.5 rounded-full text-xs font-mono uppercase tracking-wide transition-colors ${
+              status === opt.value
+                ? 'bg-black text-white'
+                : 'border border-[#d9d9dd] text-[#93939f] hover:border-black hover:text-black bg-white'
+            }`}
           >
             {opt.label}
-          </Button>
+          </button>
         ))}
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-1.5 items-center">
+        <span className="text-xs font-mono uppercase tracking-widest text-[#93939f] mr-1">Type</span>
         {typeOptions.map((opt) => (
-          <Button
+          <button
             key={opt.value}
-            size="sm"
-            variant={type === opt.value ? 'default' : 'outline'}
             onClick={() => updateParams({ type: opt.value })}
+            className={`px-3 py-1.5 rounded-full text-xs font-mono uppercase tracking-wide transition-colors ${
+              type === opt.value
+                ? 'bg-black text-white'
+                : 'border border-[#d9d9dd] text-[#93939f] hover:border-black hover:text-black bg-white'
+            }`}
           >
             {opt.label}
-          </Button>
+          </button>
         ))}
       </div>
     </div>

@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .single()
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-[#fafafa]">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar profile={profile as Profile | null} />
