@@ -1,14 +1,6 @@
 import { format, parseISO } from 'date-fns'
 import type { ClientHistory } from '@/types/clientHistory'
 
-const EVENT_LABELS: Record<string, string> = {
-  created: 'Client created',
-  edited: 'Profile updated',
-  doc_uploaded: 'Document uploaded',
-  status_change: 'Status changed',
-  note_added: 'Note added',
-}
-
 interface HistoryTabProps {
   history: ClientHistory[]
 }

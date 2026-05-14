@@ -40,7 +40,7 @@ export default function AvatarUpload({ userId, currentUrl, name, onUpload }: Ava
       const url = await uploadFile('avatars', path, file)
       onUpload(url)
       toast.success('Photo updated')
-    } catch (err) {
+    } catch {
       toast.error('Failed to upload photo')
       setPreview(currentUrl)
     } finally {

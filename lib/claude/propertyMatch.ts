@@ -1,11 +1,32 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { z } from 'zod'
 import type { ParsedProperty, MatchResult } from '@/types/propertyMatch'
 import type { Client } from '@/types/client'
 
 const client = new Anthropic()
 
-// Function to parse property listing data using Claude AI
+const ParsedPropertySchema = z.object({
+  price: z.number().nullable(),
+  location: z.string().nullable(),
+  propertyType: z.enum(['house', 'condo', 'apartment', 'land', 'commercial']).nullable(),
+  bedrooms: z.number().nullable(),
+  bathrooms: z.number().nullable(),
+  saleType: z.enum(['cash', 'loan']).nullable(),
+  rawDescription: z.string(),
+})
+
+const MatchResultSchema = z.object({
+  clientId: z.string(),
+  clientName: z.string(),
+  matchScore: z.enum(['high', 'medium', 'low']),
+  explanation: z.string(),
+})
+
+const MatchResultArraySchema = z.array(MatchResultSchema)
+
 export async function parsePropertyListing(url: string): Promise<ParsedProperty> {
+  const safeUrl = url.replace(/[\r\n\t]/g, ' ').slice(0, 2048)
+
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
@@ -23,7 +44,7 @@ Return ONLY the JSON object, no markdown, no explanation.`,
     messages: [
       {
         role: 'user',
-        content: `Extract property data from this listing URL: ${url}
+        content: `Extract property data from this listing URL: ${safeUrl}
 
 Note: If you cannot access the URL directly, analyze the URL structure and any information
 you can infer from it. Return your best estimate with available information, using null for
@@ -35,19 +56,19 @@ fields you truly cannot determine.`,
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
 
   try {
-    const parsed = JSON.parse(text.trim())
-    return parsed as ParsedProperty
+    const raw = JSON.parse(text.trim())
+    return ParsedPropertySchema.parse(raw)
   } catch {
     // Try to extract JSON from the response if initial parsing fails
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as ParsedProperty
+      const raw = JSON.parse(jsonMatch[0])
+      return ParsedPropertySchema.parse(raw)
     }
     throw new Error('Failed to parse property data from Claude response')
   }
 }
 
-// Interface for condensed client information
 interface CondensedClient {
   id: string
   name: string
@@ -61,7 +82,6 @@ interface CondensedClient {
   bathroomsMin: number | null
 }
 
-// Function to condense client data for matching
 function condensedView(c: Client): CondensedClient {
   return {
     id: c.id,
@@ -77,7 +97,6 @@ function condensedView(c: Client): CondensedClient {
   }
 }
 
-// Function to match clients to a property using Claude AI
 export async function matchClientsToProperty(
   property: ParsedProperty,
   clients: Client[]
@@ -127,13 +146,14 @@ ${JSON.stringify(condensed, null, 2)}`,
   const text = message.content[0].type === 'text' ? message.content[0].text : '[]'
 
   try {
-    const parsed = JSON.parse(text.trim())
-    return parsed as MatchResult[]
+    const raw = JSON.parse(text.trim())
+    return MatchResultArraySchema.parse(raw)
   } catch {
     // Try to extract JSON array from the response if initial parsing fails
     const jsonMatch = text.match(/\[[\s\S]*\]/)
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as MatchResult[]
+      const raw = JSON.parse(jsonMatch[0])
+      return MatchResultArraySchema.parse(raw)
     }
     return []
   }

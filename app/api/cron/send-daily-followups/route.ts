@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@supabase/supabase-js'
 import { sendFollowUpEmail } from '@/lib/resend/sendFollowUpEmail'
@@ -5,8 +6,17 @@ import { format, parseISO } from 'date-fns'
 
 // This endpoint is called by Vercel Cron daily at 8am
 export async function GET(request: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret) {
+    console.error('[cron] CRON_SECRET is not configured')
+    return NextResponse.json({ error: 'Service misconfigured' }, { status: 500 })
+  }
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const expected = `Bearer ${cronSecret}`
+  if (!authHeader || authHeader.length !== expected.length) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  if (!timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

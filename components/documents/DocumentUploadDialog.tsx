@@ -75,7 +75,7 @@ export default function DocumentUploadDialog({
       toast.success('Document uploaded')
       onSuccess()
       handleClose()
-    } catch (err) {
+    } catch {
       toast.error('Upload failed')
     } finally {
       setUploading(false)

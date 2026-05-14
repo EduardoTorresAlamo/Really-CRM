@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge'
 import type { DocStatus } from '@/types/document'
 
 const config: Record<DocStatus, { label: string; className: string }> = {

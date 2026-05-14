@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { parsePropertyListing, matchClientsToProperty } from '@/lib/claude/propertyMatch'
+import { isRateLimited } from '@/lib/rateLimit'
 import type { Client } from '@/types/client'
 
 // POST { url: string } → { property: ParsedProperty, matches: MatchResult[] }
@@ -9,6 +10,10 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (isRateLimited(`property-match:${user.id}`, 10, 60_000)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  }
 
   const { url } = await request.json()
   if (!url || typeof url !== 'string') {
@@ -47,7 +52,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('Property match error:', err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to process listing' },
+      { error: 'Failed to process listing' },
       { status: 502 }
     )
   }

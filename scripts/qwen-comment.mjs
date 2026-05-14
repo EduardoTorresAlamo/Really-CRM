@@ -12,7 +12,6 @@ import { resolve } from 'path';
 import http from 'node:http';
 
 const MODEL = 'qwen2.5-coder:14b';
-const OLLAMA_URL = 'http://localhost:11434/api/chat';
 
 const file = process.argv[2];
 const shouldWrite = process.argv.includes('--write');
