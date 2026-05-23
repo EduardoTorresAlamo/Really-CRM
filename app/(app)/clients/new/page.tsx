@@ -2,6 +2,14 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import ClientForm from '@/components/clients/ClientForm'
 
+/**
+ * New client page -- renders an empty ClientForm for creating a new client record.
+ *
+ * The authenticated user's ID is passed to ClientForm so the new client row
+ * is written with the correct realtor_id without requiring a second query.
+ *
+ * @returns The new client page JSX.
+ */
 export default async function NewClientPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

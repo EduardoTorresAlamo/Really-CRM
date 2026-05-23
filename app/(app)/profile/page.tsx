@@ -3,11 +3,21 @@ import { createClient } from '@/lib/supabase/server'
 import ProfileForm from '@/components/profile/ProfileForm'
 import type { Profile } from '@/types/profile'
 
+/**
+ * Profile page -- allows the realtor to view and update their personal profile.
+ *
+ * Fetches the profile row keyed by the Supabase auth user ID. Profile may be null
+ * if the realtor has never saved their profile (first login). ProfileForm handles
+ * both create (upsert) and update via the same submission handler.
+ *
+ * @returns The profile page JSX.
+ */
 export default async function ProfilePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // profiles.id is a foreign key referencing auth.users.id
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')

@@ -13,11 +13,26 @@ const navItems = [
   { href: '/profile', label: 'Profile', icon: User },
 ]
 
+/**
+ * Props for the MobileNav component.
+ */
 interface MobileNavProps {
+  /** Whether the slide-out sheet is open. */
   open: boolean
+  /** Callback to close the sheet (passed to Sheet's onOpenChange and each nav link's onClick). */
   onClose: () => void
 }
 
+/**
+ * Mobile navigation drawer rendered as a slide-in sheet from the left side.
+ *
+ * Only visible on small screens -- the desktop Sidebar handles navigation on md+.
+ * Each nav link calls onClose on click so the sheet closes automatically after navigation.
+ * Active link detection uses the same startsWith logic as the desktop Sidebar.
+ *
+ * @param props - MobileNavProps with open state and close callback.
+ * @returns The mobile navigation sheet JSX.
+ */
 export default function MobileNav({ open, onClose }: MobileNavProps) {
   const pathname = usePathname()
 

@@ -1,10 +1,21 @@
+/**
+ * Claude AI helpers for the property-match feature.
+ *
+ * This module exports two functions that each make a separate Claude API call:
+ *  1. parsePropertyListing  -- extracts structured data from a listing URL.
+ *  2. matchClientsToProperty -- ranks buyer clients against the parsed listing.
+ *
+ * Both functions use claude-sonnet-4-6 and return validated, typed results via Zod.
+ */
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import type { ParsedProperty, MatchResult } from '@/types/propertyMatch'
 import type { Client } from '@/types/client'
 
+// Single shared Anthropic client -- instantiating once avoids repeated SDK initialization overhead
 const client = new Anthropic()
 
+// Zod schema used to validate the JSON Claude returns for a single property listing
 const ParsedPropertySchema = z.object({
   price: z.number().nullable(),
   location: z.string().nullable(),
@@ -15,6 +26,7 @@ const ParsedPropertySchema = z.object({
   rawDescription: z.string(),
 })
 
+// Zod schema for a single matched client result returned by the second Claude call
 const MatchResultSchema = z.object({
   clientId: z.string(),
   clientName: z.string(),
@@ -22,9 +34,27 @@ const MatchResultSchema = z.object({
   explanation: z.string(),
 })
 
+// Array-level schema wrapping MatchResultSchema for batch validation of the ranking response
 const MatchResultArraySchema = z.array(MatchResultSchema)
 
+/**
+ * Calls Claude to extract structured property data from a listing URL.
+ *
+ * The URL is sanitized (control characters stripped, length capped) before being
+ * injected into the prompt to prevent prompt injection via malicious URLs.
+ *
+ * Claude is instructed to return raw JSON only -- no markdown fences, no explanation.
+ * The response is validated with ParsedPropertySchema; if initial JSON.parse fails,
+ * a regex fallback attempts to extract the first JSON object from the response body
+ * in case Claude emitted surrounding text despite the instruction.
+ *
+ * @param url - The property listing URL to analyze.
+ * @returns A ParsedProperty object with extracted fields; any field Claude couldn't
+ *          determine is null.
+ * @throws If Claude's response cannot be parsed into valid JSON or the schema rejects it.
+ */
 export async function parsePropertyListing(url: string): Promise<ParsedProperty> {
+  // Strip control characters and cap length to prevent prompt injection and token overflow
   const safeUrl = url.replace(/[\r\n\t]/g, ' ').slice(0, 2048)
 
   const message = await client.messages.create({
@@ -69,6 +99,11 @@ fields you truly cannot determine.`,
   }
 }
 
+/**
+ * A stripped-down projection of a Client, containing only the fields relevant
+ * to property matching. Sent to Claude instead of the full Client row to reduce
+ * token usage and avoid leaking sensitive contact details in the prompt.
+ */
 interface CondensedClient {
   id: string
   name: string
@@ -82,6 +117,13 @@ interface CondensedClient {
   bathroomsMin: number | null
 }
 
+/**
+ * Maps a full Client row to the minimal CondensedClient shape.
+ * Excludes email, phone, notes, and other PII that are irrelevant to property matching.
+ *
+ * @param c - The full Client database row.
+ * @returns A condensed representation suitable for inclusion in the Claude prompt.
+ */
 function condensedView(c: Client): CondensedClient {
   return {
     id: c.id,
@@ -97,12 +139,31 @@ function condensedView(c: Client): CondensedClient {
   }
 }
 
+/**
+ * Calls Claude to rank a list of buyer clients by how well they match a given property.
+ *
+ * Each client is condensed to only the preference fields before being serialized into
+ * the prompt, keeping token count low. Claude ranks them and returns a JSON array sorted
+ * best-to-worst, omitting clients that are clearly incompatible.
+ *
+ * The match criteria Claude applies: budget range, preferred locations (flexible/fuzzy),
+ * property type, bedroom/bathroom minimums, and sale type.
+ *
+ * If the response cannot be parsed, an empty array is returned rather than throwing,
+ * so callers always receive a valid (possibly empty) result set.
+ *
+ * @param property - The parsed property to match against.
+ * @param clients - The realtor's active buyer clients pulled from the database.
+ * @returns An array of MatchResult objects sorted descending by match quality. Returns
+ *          an empty array if there are no clients or Claude's response is unparseable.
+ */
 export async function matchClientsToProperty(
   property: ParsedProperty,
   clients: Client[]
 ): Promise<MatchResult[]> {
   if (clients.length === 0) return []
 
+  // Reduce each full Client row to only preference fields before sending to Claude
   const condensed = clients.map(condensedView)
 
   const message = await client.messages.create({

@@ -19,7 +19,10 @@ export interface MatchResult {
   explanation: string  // Claude's natural-language reason for the score
 }
 
+/** The combined response shape returned by the POST /api/property-match route. */
 export interface PropertyMatchResponse {
+  /** The structured property data extracted by Claude from the listing URL. */
   property: ParsedProperty
+  /** Ranked list of buyer clients that match the property, sorted best-to-worst. */
   matches: MatchResult[]
 }

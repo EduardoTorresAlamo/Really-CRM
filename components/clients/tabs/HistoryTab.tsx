@@ -1,10 +1,23 @@
 import { format, parseISO } from 'date-fns'
 import type { ClientHistory } from '@/types/clientHistory'
 
+/**
+ * Props for the HistoryTab component.
+ */
 interface HistoryTabProps {
+  /** Chronological list of history events for this client, newest first. */
   history: ClientHistory[]
 }
 
+/**
+ * History tab within the client detail page.
+ *
+ * Renders an ordered timeline of client_history events (created, edited, etc.)
+ * with a vertical connector line between entries to visually indicate sequence.
+ *
+ * @param props - HistoryTabProps containing the history event array.
+ * @returns The history timeline JSX, or an empty-state message.
+ */
 export default function HistoryTab({ history }: HistoryTabProps) {
   if (history.length === 0) {
     return (

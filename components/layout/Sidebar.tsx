@@ -17,6 +17,15 @@ const navItems = [
   { href: '/profile', label: 'Profile', icon: User },
 ]
 
+/**
+ * Fixed desktop sidebar with the primary navigation links.
+ *
+ * Hidden on mobile (md:flex) -- MobileNav provides the equivalent on small screens.
+ * Active link detection uses startsWith so that sub-routes (e.g. /clients/123)
+ * also highlight the parent "Clients" item.
+ *
+ * @returns The sidebar JSX.
+ */
 export default function Sidebar() {
   const pathname = usePathname()
 

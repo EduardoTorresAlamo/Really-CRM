@@ -6,6 +6,12 @@ const config: Record<DocStatus, { label: string; className: string }> = {
   verified: { label: 'Verified', className: 'bg-green-100 text-green-800 border-green-200' },
 }
 
+/**
+ * Renders a color-coded status badge for a document (pending, received, or verified).
+ *
+ * @param status - The document's current status.
+ * @returns A styled inline badge element.
+ */
 export default function DocumentStatusBadge({ status }: { status: DocStatus }) {
   const { label, className } = config[status]
   return (

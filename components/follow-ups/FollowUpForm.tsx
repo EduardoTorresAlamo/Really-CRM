@@ -12,13 +12,34 @@ import { CalendarIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
+/**
+ * Props for the FollowUpForm component.
+ */
 interface FollowUpFormProps {
+  /** UUID of the client this follow-up is being created for. */
   clientId: string
+  /** UUID of the authenticated realtor, stored as realtor_id on the inserted row. */
   realtorId: string
+  /** Callback invoked after the follow-up has been successfully inserted. */
   onSuccess: () => void
+  /** Callback invoked when the user dismisses the form without saving. */
   onCancel: () => void
 }
 
+/**
+ * Inline form for scheduling a new follow-up for a client.
+ *
+ * The date picker uses a Popover + Calendar combination; selecting a date
+ * closes the popover automatically to reduce clicks. The date is stored as an
+ * ISO string (yyyy-MM-dd) in the database to avoid timezone issues with full
+ * Date objects -- follow-ups are date-only, not datetime.
+ *
+ * email_sent is initialized to false so the daily cron job picks up this
+ * follow-up if it isn't manually emailed before the scheduled date.
+ *
+ * @param props - FollowUpFormProps including client/realtor IDs and callbacks.
+ * @returns The follow-up creation form JSX.
+ */
 export default function FollowUpForm({ clientId, realtorId, onSuccess, onCancel }: FollowUpFormProps) {
   const supabase = createClient()
   const [date, setDate] = useState<Date>()

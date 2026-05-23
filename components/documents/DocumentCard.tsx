@@ -17,12 +17,30 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   other: 'Other',
 }
 
+/**
+ * Props for the DocumentCard component.
+ */
 interface DocumentCardProps {
+  /** The document record to display. */
   doc: Document
+  /** Callback invoked after the document has been successfully deleted from the database. */
   onDelete: (id: string) => void
+  /** Callback invoked after the document's status has been successfully updated in the database. */
   onStatusChange: (id: string, status: DocStatus) => void
 }
 
+/**
+ * Card component representing a single uploaded client document.
+ *
+ * Provides inline status change (pending/received/verified) via a select dropdown
+ * and a delete action with a confirmation prompt. Both mutations write to Supabase
+ * directly from the client using the browser Supabase client (anon key + RLS).
+ *
+ * The download link opens file_url in a new tab, which points to Supabase Storage.
+ *
+ * @param props - DocumentCardProps including the document record and mutation callbacks.
+ * @returns A card JSX element displaying document metadata and action controls.
+ */
 export default function DocumentCard({ doc, onDelete, onStatusChange }: DocumentCardProps) {
   const supabase = createClient()
   const [deleting, setDeleting] = useState(false)

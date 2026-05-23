@@ -7,6 +7,15 @@ import ClientStatusBadge from '@/components/clients/ClientStatusBadge'
 import { ArrowRight } from 'lucide-react'
 import type { Client } from '@/types/client'
 
+/**
+ * Dashboard widget showing the 5 most recently created clients.
+ *
+ * Shows client name, type badge, and status badge for quick scanning.
+ * Includes an empty state with a "Add your first one" link when no clients exist.
+ *
+ * @param clients - Array of the 5 most recent Client rows.
+ * @returns The recent clients card JSX.
+ */
 export default function RecentClients({ clients }: { clients: Client[] }) {
   return (
     <Card className="border-[#d9d9dd]">

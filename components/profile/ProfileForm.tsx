@@ -25,11 +25,28 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+/**
+ * Props for the ProfileForm component.
+ */
 interface ProfileFormProps {
+  /** Existing profile data; null if the realtor has never saved a profile. */
   profile: Profile | null
+  /** The authenticated realtor's user ID, used as the profiles table primary key. */
   userId: string
 }
 
+/**
+ * Form for creating or updating the realtor's profile.
+ *
+ * Uses Supabase's .upsert() so the same handler works for both first-time
+ * profile creation and subsequent updates, keyed by the user's auth UUID.
+ *
+ * Photo state is managed separately from the form fields since the upload
+ * is handled by AvatarUpload and the URL is stored outside react-hook-form.
+ *
+ * @param props - ProfileFormProps with existing profile data and user ID.
+ * @returns The profile form JSX.
+ */
 export default function ProfileForm({ profile, userId }: ProfileFormProps) {
   const [photoUrl, setPhotoUrl] = useState(profile?.photo_url ?? null)
   const supabase = createClient()

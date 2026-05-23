@@ -6,11 +6,25 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Search } from 'lucide-react'
 
+/**
+ * Props for the MatchForm component.
+ */
 interface MatchFormProps {
+  /** Callback invoked with the trimmed URL string when the form is submitted. */
   onSubmit: (url: string) => void
+  /** When true, the submit button shows a spinner and is disabled. */
   loading: boolean
 }
 
+/**
+ * URL input form for the property-match feature.
+ *
+ * Controlled input with trimming on submit to strip accidental whitespace from
+ * pasted URLs. The submit button is disabled while loading or when the input is empty.
+ *
+ * @param props - MatchFormProps with submit callback and loading flag.
+ * @returns The URL input form JSX.
+ */
 export default function MatchForm({ onSubmit, loading }: MatchFormProps) {
   const [url, setUrl] = useState('')
 

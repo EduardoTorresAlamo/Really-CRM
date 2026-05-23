@@ -14,10 +14,27 @@ import { Menu } from 'lucide-react'
 import MobileNav from './MobileNav'
 import { useState } from 'react'
 
+/**
+ * Props for the TopBar component.
+ */
 interface TopBarProps {
+  /** The authenticated realtor's profile; null if the profile has not been set up yet. */
   profile: Profile | null
 }
 
+/**
+ * Top navigation bar rendered on all authenticated pages.
+ *
+ * Displays the mobile hamburger button (hidden on md+), a spacer, and the
+ * realtor's avatar + name in a dropdown menu. The dropdown contains the sign-out
+ * action which calls supabase.auth.signOut() and redirects to /login.
+ *
+ * Initials are derived from the profile name (first letter of each word, max 2)
+ * and shown as an avatar fallback when no photo is uploaded.
+ *
+ * @param props - TopBarProps with the realtor profile.
+ * @returns The top bar header JSX.
+ */
 export default function TopBar({ profile }: TopBarProps) {
   const router = useRouter()
   const supabase = createClient()

@@ -12,6 +12,20 @@ import type { Document } from '@/types/document'
 import type { FollowUp } from '@/types/followUp'
 import type { ClientHistory } from '@/types/clientHistory'
 
+/**
+ * Client detail page showing all information about a single client.
+ *
+ * Loads the client, their documents, follow-ups, and activity history in parallel
+ * to avoid sequential database round-trips. All queries are scoped to the
+ * authenticated realtor via the realtor_id column, which mirrors the RLS policy --
+ * if a realtor tries to access another realtor's client by guessing the UUID,
+ * the query returns no data and the page renders a 404.
+ *
+ * params is a Promise in Next.js 16 App Router and must be awaited.
+ *
+ * @param params - Promise resolving to route parameters including the client UUID.
+ * @returns The client detail page JSX with tabbed content.
+ */
 export default async function ClientDetailPage({
   params,
 }: {

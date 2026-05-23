@@ -4,16 +4,34 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ArrowRight } from 'lucide-react'
 
+/**
+ * A minimal projection of a follow-up row joined with its related client.
+ * The Supabase nested join (clients(id, name)) produces this shape at runtime.
+ */
 interface FollowUpItem {
   id: string
   notes: string | null
+  /** Null if the related client row was deleted or the join returned no data. */
   clients: { id: string; name: string } | null
 }
 
+/**
+ * Props for the TodayFollowUps component.
+ */
 interface TodayFollowUpsProps {
+  /** Follow-up items scheduled for today that are not yet completed. */
   followUps: FollowUpItem[]
 }
 
+/**
+ * Dashboard widget listing follow-ups due today.
+ *
+ * Each item links directly to the client detail page for quick access.
+ * The count badge in the header shows the total at a glance.
+ *
+ * @param props - TodayFollowUpsProps with the follow-up list.
+ * @returns The today's follow-ups card JSX.
+ */
 export default function TodayFollowUps({ followUps }: TodayFollowUpsProps) {
   return (
     <Card className="border-[#d9d9dd]">

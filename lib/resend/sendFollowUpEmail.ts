@@ -1,14 +1,36 @@
 import { Resend } from 'resend'
 
+/**
+ * Parameters required to render and send a follow-up reminder email.
+ */
 interface FollowUpEmailParams {
+  /** The realtor's email address to deliver the reminder to. */
   to: string
+  /** The realtor's display name used in the email greeting. */
   realtorName: string
+  /** The client's name shown in the subject line and body. */
   clientName: string
+  /** Human-readable follow-up date string, e.g. "June 5, 2025". */
   followUpDate: string
+  /** Optional follow-up notes displayed in the email body. Null means no notes section. */
   notes: string | null
+  /** Absolute URL to the client detail page, embedded as the CTA button href. */
   clientUrl: string
 }
 
+/**
+ * Sends a follow-up reminder email to a realtor via the Resend API.
+ *
+ * The email is rendered as inline HTML (no external template engine) and includes
+ * the client's name, the scheduled follow-up date, optional notes, and a deep link
+ * button back to the client profile.
+ *
+ * RESEND_FROM_EMAIL must be set to a verified sender address or domain in your
+ * Resend account, otherwise the API call will fail with a 422 error.
+ *
+ * @param params - Email recipient, template variables, and deep link URL.
+ * @throws If Resend returns an error (e.g. unverified sender, invalid recipient).
+ */
 // RESEND_FROM_EMAIL must be a verified sender address or domain in your Resend account
 export async function sendFollowUpEmail({
   to,

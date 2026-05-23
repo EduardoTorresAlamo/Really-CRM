@@ -1,13 +1,29 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Users, UserCheck, Home, Bell } from 'lucide-react'
 
+/**
+ * Props for the StatsCards component.
+ */
 interface StatsCardsProps {
+  /** Total number of clients across all statuses. */
   totalClients: number
+  /** Number of active buyer clients. */
   activeBuyers: number
+  /** Number of active seller clients. */
   activeSellers: number
+  /** Number of incomplete follow-ups scheduled before today. */
   overdueFollowUps: number
 }
 
+/**
+ * Grid of four KPI cards shown at the top of the dashboard.
+ *
+ * The overdue follow-ups card icon turns black (high-contrast alert) when
+ * there are overdue items, drawing the realtor's attention.
+ *
+ * @param props - StatsCardsProps with the four aggregate counts.
+ * @returns A 2-column (mobile) / 4-column (desktop) grid of stat cards.
+ */
 export default function StatsCards({
   totalClients,
   activeBuyers,

@@ -15,6 +15,13 @@ const config: Record<ClientStatus, { label: string; className: string }> = {
   },
 }
 
+/**
+ * Renders a small pill badge showing a client's status (active, inactive, or closed).
+ * Visual styling is driven by the config lookup table above.
+ *
+ * @param status - The client's current status value.
+ * @returns A styled inline badge element.
+ */
 export default function ClientStatusBadge({ status }: { status: ClientStatus }) {
   const { label, className } = config[status]
   return (

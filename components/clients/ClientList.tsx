@@ -14,19 +14,40 @@ import ClientStatusBadge from './ClientStatusBadge'
 import ClientTypeBadge from './ClientTypeBadge'
 import type { Client } from '@/types/client'
 
+/**
+ * Props for the ClientList component.
+ */
 interface ClientListProps {
+  /** The array of client rows to render in the table. */
   clients: Client[]
 }
 
+/**
+ * Formats a budget range as a human-readable string using abbreviated suffixes.
+ * Values >= $1M are shown as "$X.XM"; smaller values are shown as "$XXX K".
+ *
+ * @param min - The minimum budget in dollars, or null if not set.
+ * @param max - The maximum budget in dollars, or null if not set.
+ * @returns A formatted budget string, or a dash placeholder if both values are null.
+ */
 function formatBudget(min: number | null, max: number | null): string {
-  if (!min && !max) return '—'
+  if (!min && !max) return '--'
   const fmt = (n: number) =>
     n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : `$${(n / 1_000).toFixed(0)}K`
-  if (min && max) return `${fmt(min)} – ${fmt(max)}`
+  if (min && max) return `${fmt(min)} - ${fmt(max)}`
   if (min) return `From ${fmt(min)}`
   return `Up to ${fmt(max!)}`
 }
 
+/**
+ * Renders the client list as a responsive table.
+ *
+ * Preferred locations are capped at 2 visible tags with a "+N more" overflow label
+ * to prevent the table from becoming too wide on smaller viewports.
+ *
+ * @param props - ClientListProps containing the clients array.
+ * @returns A styled table of clients, or an empty-state message.
+ */
 export default function ClientList({ clients }: ClientListProps) {
   if (clients.length === 0) {
     return (

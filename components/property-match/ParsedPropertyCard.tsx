@@ -2,6 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Home, MapPin, DollarSign, Bed, Bath } from 'lucide-react'
 import type { ParsedProperty } from '@/types/propertyMatch'
 
+/**
+ * Formats a property price as a USD currency string with no decimal places.
+ *
+ * @param price - The price in dollars, or null if Claude couldn't determine it.
+ * @returns A formatted currency string, or "Not specified" for null.
+ */
 function formatPrice(price: number | null): string {
   if (!price) return 'Not specified'
   return new Intl.NumberFormat('en-US', {
@@ -11,6 +17,16 @@ function formatPrice(price: number | null): string {
   }).format(price)
 }
 
+/**
+ * Card displaying the structured property data extracted by Claude from a listing URL.
+ *
+ * Fields that Claude couldn't determine are shown as "Unknown ..." fallbacks.
+ * Optional fields (bedrooms, bathrooms, sale type) are only rendered when non-null.
+ * The rawDescription from Claude is shown as a small caption below the grid.
+ *
+ * @param property - The ParsedProperty object returned from the property-match API.
+ * @returns The parsed property summary card JSX.
+ */
 export default function ParsedPropertyCard({ property }: { property: ParsedProperty }) {
   return (
     <Card className="border-blue-200 bg-blue-50">

@@ -9,13 +9,31 @@ import { Plus } from 'lucide-react'
 import type { Client } from '@/types/client'
 import { Suspense } from 'react'
 
+/**
+ * URL search parameters accepted by the clients list page.
+ */
 interface SearchParams {
+  /** Free-text name filter applied as an ilike query (case-insensitive substring match). */
   search?: string
+  /** Status filter: 'active', 'inactive', or 'closed'. */
   status?: string
+  /** Client type filter: 'buyer' or 'seller'. */
   type?: string
 }
 
-// searchParams is a Promise in Next.js 15+ app router — must be awaited before use
+/**
+ * Clients list page with server-side filtering.
+ *
+ * Reads filter values from the URL search params and builds a Supabase query dynamically.
+ * Filters are optional -- when absent the full client list for the realtor is returned.
+ *
+ * searchParams is a Promise in Next.js 16 App Router and must be awaited before reading
+ * individual properties.
+ *
+ * @param searchParams - Promise resolving to the URL search parameters.
+ * @returns The clients list page JSX.
+ */
+// searchParams is a Promise in Next.js 15+ app router -- must be awaited before use
 export default async function ClientsPage({
   searchParams,
 }: {

@@ -4,6 +4,18 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useCallback, useTransition } from 'react'
 import { Input } from '@/components/ui/input'
 
+/**
+ * URL-driven filter controls for the clients list page.
+ *
+ * Reads current filter values from URL search params and writes updates back via
+ * router.push so the server-side page re-fetches with the new filters applied.
+ * Wrapped in useTransition so filter changes don't block other UI interactions.
+ *
+ * The search input is debounced (300ms) to avoid a URL push on every keystroke.
+ * Empty filter values are removed from the URL to keep it clean.
+ *
+ * @returns The filter bar JSX with search input and status/type toggle buttons.
+ */
 export default function ClientFilters() {
   const router = useRouter()
   const pathname = usePathname()

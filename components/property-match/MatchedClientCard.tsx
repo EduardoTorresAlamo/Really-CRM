@@ -11,11 +11,26 @@ const scoreConfig = {
   low: { label: 'Possible Match', className: 'bg-gray-100 text-gray-700 border-gray-200' },
 }
 
+/**
+ * Props for the MatchedClientCard component.
+ */
 interface MatchedClientCardProps {
+  /** The match result from Claude including score, explanation, and client identifiers. */
   match: MatchResult
+  /** 1-based position in the ranked results list, shown as a "#N" label. */
   rank: number
 }
 
+/**
+ * Card component displaying a single matched client from the property-match results.
+ *
+ * The color-coded badge (green/yellow/gray) reflects Claude's matchScore.
+ * The explanation field is Claude's natural-language reasoning for the score.
+ * A link navigates directly to the full client detail page.
+ *
+ * @param props - MatchedClientCardProps with the match data and rank position.
+ * @returns The matched client card JSX.
+ */
 export default function MatchedClientCard({ match, rank }: MatchedClientCardProps) {
   const { label, className } = scoreConfig[match.matchScore]
 

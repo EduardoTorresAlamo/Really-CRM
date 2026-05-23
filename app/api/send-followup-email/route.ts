@@ -3,6 +3,28 @@ import { createClient } from '@/lib/supabase/server'
 import { sendFollowUpEmail } from '@/lib/resend/sendFollowUpEmail'
 import { format, parseISO } from 'date-fns'
 
+/**
+ * POST /api/send-followup-email
+ *
+ * Manually triggers a follow-up reminder email for a specific follow-up record.
+ * Called from the "Email" button on a FollowUpCard in the client UI.
+ *
+ * This route exists as a server-side proxy so the Resend API key and email logic
+ * stay server-side and are never exposed to the browser.
+ *
+ * The follow-up is fetched with .eq('realtor_id', user.id) to ensure a realtor
+ * can only email reminders for their own clients (RLS-equivalent enforcement at
+ * the query level, since this uses the anon key).
+ *
+ * On success, sets email_sent = true on the follow-up row so the cron job skips
+ * it during the next daily run.
+ *
+ * Request body: { followUpId: string }
+ * Response: { success: true } or { error: string }
+ *
+ * @param request - The incoming Next.js request object.
+ * @returns JSON success or error response.
+ */
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -11,7 +33,8 @@ export async function POST(request: NextRequest) {
   const { followUpId } = await request.json()
   if (!followUpId) return NextResponse.json({ error: 'followUpId required' }, { status: 400 })
 
-  // Fetch follow-up with client and profile
+  // Join clients and profiles in one query to get the realtor email and client name
+  // .eq('realtor_id', user.id) scopes the query to the authenticated realtor's data
   const { data: followUp, error: fuError } = await supabase
     .from('follow_ups')
     .select('*, clients(name, id), profiles(name, email)')

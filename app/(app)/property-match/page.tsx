@@ -7,15 +7,35 @@ import MatchedClientCard from '@/components/property-match/MatchedClientCard'
 import { toast } from 'sonner'
 import type { PropertyMatchResponse } from '@/types/propertyMatch'
 
+/**
+ * Discriminated union representing the property-match request lifecycle.
+ * Using a status tag rather than separate loading/error/data booleans avoids
+ * impossible states (e.g. loading=true and result set at the same time).
+ */
 type State =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'done'; result: PropertyMatchResponse }
   | { status: 'error'; message: string }
 
+/**
+ * Property Match page -- the AI-powered client-to-listing matching screen.
+ *
+ * The user pastes a property listing URL, which is sent to /api/property-match.
+ * That route orchestrates two Claude calls (parse + rank) and returns the results.
+ * This component manages the async state machine and renders the appropriate UI
+ * for each phase: idle form, loading spinner, results, or error message.
+ *
+ * @returns The property match page JSX.
+ */
 export default function PropertyMatchPage() {
   const [state, setState] = useState<State>({ status: 'idle' })
 
+  /**
+   * Submits the listing URL to the property-match API and transitions the state machine.
+   *
+   * @param url - The property listing URL entered by the realtor.
+   */
   async function handleSubmit(url: string) {
     setState({ status: 'loading' })
     try {

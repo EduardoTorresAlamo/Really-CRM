@@ -9,16 +9,39 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 
+/**
+ * Login page implementing passwordless magic-link authentication via Supabase OTP.
+ *
+ * Flow:
+ *   1. Realtor enters their email address and submits the form.
+ *   2. signInWithOtp sends a one-time magic link to the email via Supabase Auth.
+ *   3. The page transitions to a "check your email" confirmation view.
+ *   4. Clicking the link redirects to /auth/callback?code=... which exchanges
+ *      the code for a session and redirects to the dashboard.
+ *
+ * emailRedirectTo must match the Site URL or an allowed redirect URL configured
+ * in the Supabase Auth dashboard, otherwise the magic link will be rejected.
+ *
+ * @returns The login page JSX.
+ */
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
+  // `sent` controls whether to show the "check your email" confirmation or the email form
   const [sent, setSent] = useState(false)
   const supabase = createClient()
 
+  /**
+   * Submits the email address to Supabase to trigger a magic-link email.
+   *
+   * @param e - The form submission event.
+   */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
 
+    // signInWithOtp sends a magic link -- no password involved
+    // emailRedirectTo must be an allowed redirect URL in the Supabase project settings
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {

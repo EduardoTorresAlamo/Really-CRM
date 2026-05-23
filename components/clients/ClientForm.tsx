@@ -46,14 +46,37 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-// mode='create' inserts a new client + writes a "created" history event
-// mode='edit' updates the existing client + writes an "edited" history event
+/**
+ * Props for the ClientForm component.
+ *
+ * mode='create' inserts a new client row and writes a "created" event to client_history.
+ * mode='edit' updates the existing client row and writes an "edited" event to client_history.
+ */
 interface ClientFormProps {
+  /** Existing client data used to pre-populate the form in edit mode. Omitted in create mode. */
   client?: Client
+  /** The authenticated realtor's user ID, used as realtor_id when writing to the database. */
   userId: string
+  /** Determines whether the form creates a new client or updates an existing one. */
   mode: 'create' | 'edit'
 }
 
+/**
+ * Shared create/edit form for client records.
+ *
+ * Uses react-hook-form with Zod validation. Budget, bedroom, and bathroom values
+ * are collected as strings (HTML inputs always yield strings) and coerced to numbers
+ * in the onSubmit handler before writing to Supabase. Empty strings become null.
+ *
+ * Property preferences (types, locations) are managed in local React state rather
+ * than form fields because multi-select toggle UI doesn't map cleanly to form inputs.
+ *
+ * After a successful write, a corresponding entry is inserted into client_history
+ * to provide an audit trail visible in the History tab.
+ *
+ * @param props - ClientFormProps containing optional existing client data and mode.
+ * @returns The client create/edit form JSX.
+ */
 export default function ClientForm({ client, userId, mode }: ClientFormProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -91,6 +114,12 @@ export default function ClientForm({ client, userId, mode }: ClientFormProps) {
   // Watch client_type so the "Property Preferences" section shows/hides reactively
   const clientType = watch('client_type')
 
+  /**
+   * Toggles a property type in the selected set -- clicking an already-selected
+   * type removes it; clicking an unselected one adds it.
+   *
+   * @param pt - The property type to toggle.
+   */
   function togglePropertyType(pt: PropertyType) {
     setSelectedPropertyTypes((prev) =>
       prev.includes(pt) ? prev.filter((t) => t !== pt) : [...prev, pt]
@@ -109,6 +138,11 @@ export default function ClientForm({ client, userId, mode }: ClientFormProps) {
     }
   }
 
+  /**
+   * Removes a location tag from the preferred locations list.
+   *
+   * @param loc - The location string to remove.
+   */
   function removeLocation(loc: string) {
     setLocations((prev) => prev.filter((l) => l !== loc))
   }
