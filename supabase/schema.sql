@@ -111,7 +111,9 @@ create policy "own profile"    on profiles       for all using (auth.uid() = id)
 create policy "own clients"    on clients        for all using (auth.uid() = realtor_id);
 create policy "own documents"  on documents      for all using (auth.uid() = realtor_id);
 create policy "own followups"  on follow_ups     for all using (auth.uid() = realtor_id);
-create policy "own history"    on client_history for all using (auth.uid() = realtor_id);
+-- client_history is an immutable audit log: SELECT and INSERT only, no UPDATE or DELETE
+create policy "own history read"   on client_history for select using (auth.uid() = realtor_id);
+create policy "own history insert" on client_history for insert with check (auth.uid() = realtor_id);
 
 -- ============================================================
 -- INDEXES
