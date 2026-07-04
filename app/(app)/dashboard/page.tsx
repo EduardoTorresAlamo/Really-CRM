@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import StatsCards from '@/components/dashboard/StatsCards'
-import TodayFollowUps from '@/components/dashboard/TodayFollowUps'
+import TodayFollowUps, { type FollowUpItem } from '@/components/dashboard/TodayFollowUps'
 import RecentClients from '@/components/dashboard/RecentClients'
 import type { Client } from '@/types/client'
 import { format } from 'date-fns'
@@ -59,8 +59,8 @@ export default async function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* `as any` because the nested join shape `clients(id, name)` isn't typed by the Supabase codegen */}
-        <TodayFollowUps followUps={(todayFollowUps ?? []) as any} />
+        {/* Cast via unknown because the nested join shape `clients(id, name)` isn't typed by the Supabase codegen */}
+        <TodayFollowUps followUps={(todayFollowUps ?? []) as unknown as FollowUpItem[]} />
         <RecentClients clients={(recentClients ?? []) as Client[]} />
       </div>
     </div>

@@ -7,7 +7,7 @@ import { format, parseISO } from 'date-fns'
 /**
  * GET /api/cron/send-daily-followups
  *
- * Cron endpoint invoked by Vercel Cron daily at 8am (configured in vercel.json).
+ * Cron endpoint invoked by Vercel Cron daily at 13:00 UTC (configured in vercel.json).
  * Scans all realtors' follow-ups that are due today or overdue and not yet emailed,
  * then sends a reminder email for each one via Resend.
  *
@@ -27,7 +27,7 @@ import { format, parseISO } from 'date-fns'
  * @param request - The incoming Next.js request object (must carry the cron auth header).
  * @returns JSON with the number of emails sent, or an error response.
  */
-// This endpoint is called by Vercel Cron daily at 8am
+// This endpoint is called by Vercel Cron daily at 13:00 UTC
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {

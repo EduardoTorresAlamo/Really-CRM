@@ -100,7 +100,7 @@ export default function FollowUpsTab({ initialFollowUps, clientId, realtorId }: 
       ) : (
         <div className="space-y-2">
           {/* Show pending first so actionable items are always at the top */}
-        {[...pending, ...completed].map((fu) => (
+          {[...pending, ...completed].map((fu) => (
             <FollowUpCard
               key={fu.id}
               followUp={fu}

@@ -30,8 +30,17 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { followUpId } = await request.json()
-  if (!followUpId) return NextResponse.json({ error: 'followUpId required' }, { status: 400 })
+  // request.json() throws on a malformed body -- return 400 instead of an unhandled 500
+  let body: { followUpId?: unknown }
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  const { followUpId } = body
+  if (!followUpId || typeof followUpId !== 'string') {
+    return NextResponse.json({ error: 'followUpId required' }, { status: 400 })
+  }
 
   // Join clients and profiles in one query to get the realtor email and client name
   // .eq('realtor_id', user.id) scopes the query to the authenticated realtor's data

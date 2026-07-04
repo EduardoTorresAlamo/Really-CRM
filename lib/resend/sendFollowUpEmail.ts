@@ -1,6 +1,19 @@
 import { Resend } from 'resend'
 
 /**
+ * Escapes HTML special characters so user-entered values (names, notes)
+ * cannot inject markup into the email body.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
  * Parameters required to render and send a follow-up reminder email.
  */
 interface FollowUpEmailParams {
@@ -41,6 +54,12 @@ export async function sendFollowUpEmail({
   clientUrl,
 }: FollowUpEmailParams) {
   const resend = new Resend(process.env.RESEND_API_KEY)
+  // Escape user-entered values before interpolating into the HTML body
+  // (client names and notes are free text -- without this they can inject markup)
+  const safeRealtorName = escapeHtml(realtorName)
+  const safeClientName = escapeHtml(clientName)
+  const safeNotes = notes ? escapeHtml(notes) : null
+  const safeClientUrl = escapeHtml(clientUrl)
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to,
@@ -48,11 +67,11 @@ export async function sendFollowUpEmail({
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
         <h2 style="color: #111827;">Follow-up Reminder</h2>
-        <p>Hi ${realtorName},</p>
-        <p>You have a follow-up scheduled for <strong>${clientName}</strong> on <strong>${followUpDate}</strong>.</p>
-        ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
+        <p>Hi ${safeRealtorName},</p>
+        <p>You have a follow-up scheduled for <strong>${safeClientName}</strong> on <strong>${followUpDate}</strong>.</p>
+        ${safeNotes ? `<p><strong>Notes:</strong> ${safeNotes}</p>` : ''}
         <p>
-          <a href="${clientUrl}" style="display: inline-block; background: #111827; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">
+          <a href="${safeClientUrl}" style="display: inline-block; background: #111827; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">
             View Client
           </a>
         </p>
