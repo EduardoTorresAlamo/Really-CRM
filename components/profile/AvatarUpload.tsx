@@ -50,6 +50,15 @@ export default function AvatarUpload({ userId, currentUrl, name, onUpload }: Ava
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Enforce the 5MB limit the UI advertises -- otherwise oversized files fail
+    // server-side with an unhelpful generic error
+    const MAX_SIZE_BYTES = 5 * 1024 * 1024
+    if (file.size > MAX_SIZE_BYTES) {
+      toast.error('Photo must be 5MB or smaller')
+      e.target.value = ''
+      return
+    }
+
     const ext = file.name.split('.').pop()
     // Fixed filename per user — uploading a new photo overwrites the old one automatically
     const path = `${userId}/avatar.${ext}`

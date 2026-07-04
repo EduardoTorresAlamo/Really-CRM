@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { useCallback, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useTransition } from 'react'
 import { Input } from '@/components/ui/input'
 
 /**
@@ -21,6 +21,14 @@ export default function ClientFilters() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [, startTransition] = useTransition()
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Clear any pending debounced search push on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    }
+  }, [])
 
   const search = searchParams.get('search') ?? ''
   const status = searchParams.get('status') ?? ''
@@ -60,11 +68,13 @@ export default function ClientFilters() {
       <Input
         placeholder="Search clients..."
         defaultValue={search}
-        // Debounce search so we don't push a URL update on every keystroke
+        // Debounce search so we don't push a URL update on every keystroke.
+        // The previous timeout must be cleared here — returning a cleanup
+        // function from onChange does nothing (that's a useEffect pattern).
         onChange={(e) => {
           const val = e.target.value
-          const timeout = setTimeout(() => updateParams({ search: val }), 300)
-          return () => clearTimeout(timeout)
+          if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+          searchTimeoutRef.current = setTimeout(() => updateParams({ search: val }), 300)
         }}
         className="sm:max-w-xs rounded-full border-[#d9d9dd] focus:border-[#9b60aa] text-sm"
       />

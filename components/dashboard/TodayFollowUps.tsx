@@ -8,7 +8,7 @@ import { ArrowRight } from 'lucide-react'
  * A minimal projection of a follow-up row joined with its related client.
  * The Supabase nested join (clients(id, name)) produces this shape at runtime.
  */
-interface FollowUpItem {
+export interface FollowUpItem {
   id: string
   notes: string | null
   /** Null if the related client row was deleted or the join returned no data. */

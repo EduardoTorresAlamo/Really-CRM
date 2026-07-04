@@ -33,7 +33,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   }
 
-  const { url } = await request.json()
+  // request.json() throws on a malformed body -- return 400 instead of an unhandled 500
+  let body: { url?: unknown }
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  const { url } = body
   if (!url || typeof url !== 'string') {
     return NextResponse.json({ error: 'URL is required' }, { status: 400 })
   }
