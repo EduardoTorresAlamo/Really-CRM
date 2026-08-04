@@ -15,6 +15,8 @@ interface FollowUpsTabProps {
   initialFollowUps: FollowUp[]
   /** The UUID of the client these follow-ups belong to. */
   clientId: string
+  /** The client's name, forwarded to the form for template placeholder substitution. */
+  clientName: string
   /** The authenticated realtor's user ID, used when inserting new follow-up rows. */
   realtorId: string
 }
@@ -28,7 +30,7 @@ interface FollowUpsTabProps {
  * @param props - FollowUpsTabProps including initial follow-ups and identifiers.
  * @returns The follow-ups tab JSX with list and inline creation form.
  */
-export default function FollowUpsTab({ initialFollowUps, clientId, realtorId }: FollowUpsTabProps) {
+export default function FollowUpsTab({ initialFollowUps, clientId, clientName, realtorId }: FollowUpsTabProps) {
   const [followUps, setFollowUps] = useState<FollowUp[]>(initialFollowUps)
   const [showForm, setShowForm] = useState(false)
 
@@ -88,6 +90,7 @@ export default function FollowUpsTab({ initialFollowUps, clientId, realtorId }: 
         <FollowUpForm
           clientId={clientId}
           realtorId={realtorId}
+          clientName={clientName}
           onSuccess={handleSuccess}
           onCancel={() => setShowForm(false)}
         />

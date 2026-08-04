@@ -87,7 +87,7 @@ export default async function ClientDetailPage({
         </TabsContent>
 
         <TabsContent value="followups" className="mt-4">
-          <FollowUpsTab initialFollowUps={followUps} clientId={id} realtorId={user.id} />
+          <FollowUpsTab initialFollowUps={followUps} clientId={id} clientName={client.name} realtorId={user.id} />
         </TabsContent>
 
         <TabsContent value="history" className="mt-4">

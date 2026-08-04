@@ -4,12 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { LayoutDashboard, Users, Search, User } from 'lucide-react'
+import { LayoutDashboard, Users, KanbanSquare, Search, Mail, User } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/clients', label: 'Clients', icon: Users },
+  { href: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
   { href: '/property-match', label: 'Property Match', icon: Search },
+  { href: '/templates', label: 'Templates', icon: Mail },
   { href: '/profile', label: 'Profile', icon: User },
 ]
 

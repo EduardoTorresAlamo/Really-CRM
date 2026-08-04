@@ -11,6 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import TemplatePicker from '@/components/templates/TemplatePicker'
+import { applyTemplate } from '@/lib/email/templates'
 
 /**
  * Props for the FollowUpForm component.
@@ -20,6 +22,8 @@ interface FollowUpFormProps {
   clientId: string
   /** UUID of the authenticated realtor, stored as realtor_id on the inserted row. */
   realtorId: string
+  /** Client name, used to substitute {{clientName}} when a template is picked. */
+  clientName?: string
   /** Callback invoked after the follow-up has been successfully inserted. */
   onSuccess: () => void
   /** Callback invoked when the user dismisses the form without saving. */
@@ -40,7 +44,7 @@ interface FollowUpFormProps {
  * @param props - FollowUpFormProps including client/realtor IDs and callbacks.
  * @returns The follow-up creation form JSX.
  */
-export default function FollowUpForm({ clientId, realtorId, onSuccess, onCancel }: FollowUpFormProps) {
+export default function FollowUpForm({ clientId, realtorId, clientName, onSuccess, onCancel }: FollowUpFormProps) {
   const supabase = createClient()
   const [date, setDate] = useState<Date>()
   const [notes, setNotes] = useState('')
@@ -87,8 +91,13 @@ export default function FollowUpForm({ clientId, realtorId, onSuccess, onCancel 
       </div>
       <div className="space-y-2">
         <Label>Notes (optional)</Label>
+        <TemplatePicker
+          onSelect={(t) =>
+            setNotes(applyTemplate(t.body, { clientName }))
+          }
+        />
         <Textarea
-          rows={3}
+          rows={4}
           placeholder="What to discuss or follow up on..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

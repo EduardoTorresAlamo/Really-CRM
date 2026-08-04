@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import ClientList from '@/components/clients/ClientList'
+import SelectableClientList from '@/components/clients/SelectableClientList'
 import ClientFilters from '@/components/clients/ClientFilters'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -82,7 +82,7 @@ export default async function ClientsPage({
         <ClientFilters />
       </Suspense>
 
-      <ClientList clients={(clients ?? []) as Client[]} />
+      <SelectableClientList clients={(clients ?? []) as Client[]} />
     </div>
   )
 }

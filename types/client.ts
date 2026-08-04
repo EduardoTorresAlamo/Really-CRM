@@ -4,6 +4,15 @@ export type ClientType = 'buyer' | 'seller'
 /** The client's current engagement status with the realtor. */
 export type ClientStatus = 'active' | 'inactive' | 'closed'
 
+/** The client's position in the sales pipeline, rendered as Kanban columns. */
+export type ClientStage =
+  | 'lead'
+  | 'contacted'
+  | 'showing'
+  | 'negotiation'
+  | 'closed'
+  | 'lost'
+
 /** The financing method the client intends to use for the transaction. */
 export type SaleType = 'cash' | 'loan'
 
@@ -16,6 +25,7 @@ export interface Client {
   realtor_id: string
   client_type: ClientType
   status: ClientStatus
+  stage: ClientStage
   name: string
   email: string | null
   phone: string | null

@@ -12,6 +12,7 @@ create type sale_type     as enum ('cash', 'loan');
 create type property_type as enum ('house', 'condo', 'apartment', 'land', 'commercial');
 create type doc_type      as enum ('id', 'pre_approval_letter', 'contract', 'other');
 create type doc_status    as enum ('pending', 'received', 'verified');
+create type client_stage  as enum ('lead', 'contacted', 'showing', 'negotiation', 'closed', 'lost');
 
 -- ============================================================
 -- PROFILES (one per authenticated realtor)
@@ -36,6 +37,7 @@ create table clients (
   realtor_id          uuid not null references profiles(id) on delete cascade,
   client_type         client_type not null,
   status              client_status not null default 'active',
+  stage               client_stage not null default 'lead',
   name                text not null,
   email               text,
   phone               text,
@@ -51,6 +53,20 @@ create table clients (
   bathrooms_max       numeric(3,1),
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
+);
+
+-- ============================================================
+-- EMAIL TEMPLATES (custom, per realtor)
+-- Predefined templates live in code (lib/email/templates.ts).
+-- ============================================================
+create table email_templates (
+  id          uuid primary key default uuid_generate_v4(),
+  realtor_id  uuid not null references profiles(id) on delete cascade,
+  name        text not null,
+  subject     text not null,
+  body        text not null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
 );
 
 -- ============================================================
@@ -101,15 +117,17 @@ create table client_history (
 -- ============================================================
 -- ROW LEVEL SECURITY
 -- ============================================================
-alter table profiles       enable row level security;
-alter table clients        enable row level security;
-alter table documents      enable row level security;
-alter table follow_ups     enable row level security;
-alter table client_history enable row level security;
+alter table profiles        enable row level security;
+alter table clients         enable row level security;
+alter table email_templates enable row level security;
+alter table documents       enable row level security;
+alter table follow_ups      enable row level security;
+alter table client_history  enable row level security;
 
-create policy "own profile"    on profiles       for all using (auth.uid() = id);
-create policy "own clients"    on clients        for all using (auth.uid() = realtor_id);
-create policy "own documents"  on documents      for all using (auth.uid() = realtor_id);
+create policy "own profile"    on profiles        for all using (auth.uid() = id);
+create policy "own clients"    on clients         for all using (auth.uid() = realtor_id);
+create policy "own templates"  on email_templates for all using (auth.uid() = realtor_id);
+create policy "own documents"  on documents       for all using (auth.uid() = realtor_id);
 create policy "own followups"  on follow_ups     for all using (auth.uid() = realtor_id);
 -- client_history is an immutable audit log: SELECT and INSERT only, no UPDATE or DELETE
 create policy "own history read"   on client_history for select using (auth.uid() = realtor_id);
@@ -121,6 +139,8 @@ create policy "own history insert" on client_history for insert with check (auth
 create index on clients(realtor_id);
 create index on clients(status);
 create index on clients(client_type);
+create index on clients(stage);
+create index on email_templates(realtor_id);
 create index on follow_ups(realtor_id);
 create index on follow_ups(scheduled_date, completed);
 create index on documents(client_id);
@@ -143,6 +163,10 @@ create trigger trg_profiles_updated_at
 
 create trigger trg_clients_updated_at
   before update on clients
+  for each row execute procedure set_updated_at();
+
+create trigger trg_email_templates_updated_at
+  before update on email_templates
   for each row execute procedure set_updated_at();
 
 create trigger trg_documents_updated_at
