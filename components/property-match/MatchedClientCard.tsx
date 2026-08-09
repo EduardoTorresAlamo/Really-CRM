@@ -5,10 +5,16 @@ import { cn } from '@/lib/utils'
 import { ArrowRight } from 'lucide-react'
 import type { MatchResult } from '@/types/propertyMatch'
 
+/**
+ * Match strength reads as a monochrome fill ladder (solid > tint > outline) rather
+ * than a green/amber/grey traffic light. It matches the existing client badges, keeps
+ * the palette to the cool neutrals DESIGN.md specifies, and stays legible to anyone
+ * who cannot separate those three hues.
+ */
 const scoreConfig = {
-  high: { label: 'High Match', className: 'bg-green-100 text-green-800 border-green-200' },
-  medium: { label: 'Good Match', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-  low: { label: 'Possible Match', className: 'bg-gray-100 text-gray-700 border-gray-200' },
+  high: { label: 'High Match', className: 'bg-ink text-white' },
+  medium: { label: 'Good Match', className: 'bg-hairline-soft text-ink' },
+  low: { label: 'Possible Match', className: 'border border-hairline bg-surface text-ink-subtle' },
 }
 
 /**
@@ -35,27 +41,43 @@ export default function MatchedClientCard({ match, rank }: MatchedClientCardProp
   const { label, className } = scoreConfig[match.matchScore]
 
   return (
-    <Card>
-      <CardContent className="pt-4">
+    <Card className="ring-hairline transition-shadow duration-200 ease-fluid hover:shadow-hairline">
+      <CardContent className="px-5 pb-1 pt-1">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <span className="text-xs font-bold text-muted-foreground w-5 shrink-0 mt-0.5">
-              #{rank}
+          <div className="flex min-w-0 items-start gap-3">
+            <span
+              data-numeric
+              aria-hidden
+              className="mt-0.5 w-5 shrink-0 font-mono text-xs text-ink-muted"
+            >
+              {rank}
             </span>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-semibold text-gray-900">{match.clientName}</p>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${className}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium text-ink">{match.clientName}</p>
+                <span
+                  className={cn(
+                    'inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-xs uppercase tracking-wide',
+                    className
+                  )}
+                >
                   {label}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              <p className="mt-2 text-xs leading-relaxed text-ink-subtle">
                 {match.explanation}
               </p>
             </div>
           </div>
-          <Link href={`/clients/${match.clientId}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'shrink-0')}>
-            <ArrowRight className="w-3.5 h-3.5" />
+          <Link
+            href={`/clients/${match.clientId}`}
+            aria-label={`Open ${match.clientName}`}
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
+              'shrink-0 text-ink-muted transition-colors duration-150 hover:text-interaction'
+            )}
+          >
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
           </Link>
         </div>
       </CardContent>

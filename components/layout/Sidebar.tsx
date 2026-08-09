@@ -34,28 +34,57 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="hidden md:flex flex-col w-60 min-h-screen bg-white border-r border-[#d9d9dd] py-8">
-      <div className="px-6 mb-10">
-        <span className="text-base font-bold tracking-tight text-black uppercase font-mono letter-spacing-[0.08em]">
-          REALLY CRM
-        </span>
+    <aside className="sticky top-0 hidden h-[100dvh] w-60 shrink-0 flex-col border-r border-hairline bg-surface py-6 md:flex">
+      <div className="px-5 pb-8">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 rounded-sm font-mono text-[13px] font-medium uppercase tracking-[0.14em] text-ink"
+        >
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 rounded-full bg-ink"
+          />
+          Really CRM
+        </Link>
       </div>
-      <nav className="flex-1 px-4 space-y-0.5">
-        {navItems.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-[11px] text-sm transition-colors',
-              pathname === href || pathname.startsWith(href + '/')
-                ? 'bg-[#f2f2f2] text-black font-medium'
-                : 'text-[#93939f] hover:bg-[#f2f2f2] hover:text-[#1863dc]'
-            )}
-          >
-            <Icon className="w-4 h-4 shrink-0" />
-            {label}
-          </Link>
-        ))}
+
+      <nav className="flex-1 space-y-0.5 px-3" aria-label="Primary">
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + '/')
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                // Only color transitions: the row itself must not move, or the whole
+                // nav shimmers every time the pointer crosses it.
+                'group relative flex items-center gap-3 rounded-lg py-2 pl-3 pr-3 text-sm transition-colors duration-150',
+                active
+                  ? 'bg-hairline-soft font-medium text-ink'
+                  : 'text-ink-subtle hover:bg-hairline-soft/70 hover:text-ink'
+              )}
+            >
+              {/* Active marker sits in the gutter so the label baseline never shifts
+                  between states. */}
+              <span
+                aria-hidden
+                className={cn(
+                  'absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-ink transition-opacity duration-150',
+                  active ? 'opacity-100' : 'opacity-0'
+                )}
+              />
+              <Icon
+                className={cn(
+                  'h-4 w-4 shrink-0 transition-colors duration-150',
+                  active ? 'text-ink' : 'text-ink-muted group-hover:text-ink'
+                )}
+                strokeWidth={1.75}
+              />
+              {label}
+            </Link>
+          )
+        })}
       </nav>
     </aside>
   )

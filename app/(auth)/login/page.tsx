@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { ArrowRight, MailCheck } from 'lucide-react'
 
 /**
  * Login page implementing passwordless magic-link authentication via Supabase OTP.
@@ -59,67 +60,148 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #1a0533 0%, #2d1b69 40%, #17171c 100%)' }}>
-      <div className="flex-1 flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-sm">
-          <div className="mb-10 text-center">
-            <span className="text-xs font-mono uppercase tracking-[0.2em] text-[#9b60aa]">
-              REALLY CRM
-            </span>
-            <h1 className="text-4xl font-bold text-white mt-3 tracking-tight">
-              Welcome back.
-            </h1>
-            <p className="text-[#93939f] mt-2 text-sm">
-              Sign in to manage your real estate clients.
-            </p>
-          </div>
+    <div className="min-h-[100dvh] grid lg:grid-cols-[1.05fr_1fr]">
+      {/* Deep purple band. DESIGN.md reserves purple for full-width sections, never
+          card surfaces, so it carries the brand here and the form stays on white. */}
+      <aside
+        className="relative hidden lg:flex flex-col justify-between p-12 xl:p-16 overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(135deg, #1a0533 0%, #2d1b69 42%, #17171c 100%)',
+        }}
+      >
+        {/* Single soft light source, masked so it never touches the text column. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-40 -left-24 h-[32rem] w-[32rem] rounded-full opacity-40 blur-3xl"
+          style={{
+            background:
+              'radial-gradient(circle, rgba(155,96,170,0.55) 0%, transparent 68%)',
+          }}
+        />
 
-          <div className="bg-white rounded-[22px] p-8 border border-[#d9d9dd]">
-            {sent ? (
-              <div className="text-center space-y-3">
-                <div className="w-10 h-10 rounded-full bg-[#f2f2f2] flex items-center justify-center mx-auto">
-                  <span className="text-lg">✉</span>
-                </div>
-                <p className="text-sm text-black font-medium">Check your email</p>
-                <p className="text-xs text-[#93939f]">
-                  We sent a magic link to <span className="text-black">{email}</span>
+        <span className="relative font-mono text-[11px] uppercase tracking-[0.22em] text-white/60">
+          Really CRM
+        </span>
+
+        <div className="relative max-w-md">
+          <h2 className="text-4xl xl:text-5xl font-normal text-white leading-[1.08] tracking-[-0.03em]">
+            Every client, every follow-up, in one place.
+          </h2>
+          <p className="mt-5 text-base leading-relaxed text-white/70">
+            Match listings to the buyers who actually want them, and never let a
+            follow-up slip past its date.
+          </p>
+        </div>
+
+        <div className="relative flex items-center gap-6 font-mono text-[11px] uppercase tracking-[0.16em] text-white/45">
+          <span>Pipeline</span>
+          <span aria-hidden className="h-px w-6 bg-white/20" />
+          <span>Matching</span>
+          <span aria-hidden className="h-px w-6 bg-white/20" />
+          <span>Follow-ups</span>
+        </div>
+      </aside>
+
+      <main className="flex flex-col items-center justify-center bg-surface px-6 py-16 sm:px-10">
+        <div className="w-full max-w-sm">
+          {/* Wordmark only shows on small screens, where the purple panel is hidden. */}
+          <span className="lg:hidden font-mono text-[11px] uppercase tracking-[0.22em] text-ink-subtle">
+            Really CRM
+          </span>
+
+          {sent ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-6 lg:mt-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-300 ease-fluid"
+            >
+              <span
+                aria-hidden
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-hairline-soft text-ink"
+              >
+                <MailCheck className="h-5 w-5" strokeWidth={1.5} />
+              </span>
+              <h1 className="mt-6 text-3xl font-normal text-ink tracking-[-0.025em]">
+                Check your email
+              </h1>
+              <p className="mt-3 text-sm leading-relaxed text-ink-subtle">
+                We sent a magic link to{' '}
+                <span className="font-medium text-ink">{email}</span>. Open it on
+                this device to finish signing in.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSent(false)}
+                className="mt-6 text-sm text-ink-subtle underline underline-offset-4 transition-colors duration-150 hover:text-interaction"
+              >
+                Use a different email
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="mt-6 lg:mt-0">
+                <h1 className="text-3xl font-normal text-ink tracking-[-0.025em]">
+                  Welcome back
+                </h1>
+                <p className="mt-2 text-sm leading-relaxed text-ink-subtle">
+                  Sign in with a magic link. No password to remember.
                 </p>
-                <button
-                  onClick={() => setSent(false)}
-                  className="text-xs text-[#93939f] hover:text-[#1863dc] transition-colors mt-2 underline"
-                >
-                  Use a different email
-                </button>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
+
+              <form onSubmit={handleSubmit} className="mt-8 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-mono uppercase tracking-widest text-[#93939f]">
+                  <Label
+                    htmlFor="email"
+                    className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-subtle"
+                  >
                     Email address
                   </Label>
                   <Input
                     id="email"
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoFocus
-                    className="rounded-full border-[#d9d9dd] focus:border-[#9b60aa] text-sm h-11"
+                    disabled={loading}
+                    className="h-11 rounded-lg border-hairline px-3.5 text-sm"
                   />
                 </div>
+
                 <Button
                   type="submit"
-                  className="w-full rounded-full h-11 text-sm font-medium bg-black text-white hover:bg-[#1863dc] transition-colors"
-                  disabled={loading}
+                  disabled={loading || !email.trim()}
+                  className="h-11 w-full rounded-lg bg-ink text-sm font-medium text-white transition-[transform,background-color] duration-150 ease-fluid hover:bg-interaction active:scale-[0.98]"
                 >
-                  {loading ? 'Sending...' : 'Send Magic Link'}
+                  {loading ? (
+                    <>
+                      <span
+                        aria-hidden
+                        className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                      />
+                      Sending link
+                    </>
+                  ) : (
+                    <>
+                      Send magic link
+                      <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+                    </>
+                  )}
                 </Button>
               </form>
-            )}
-          </div>
+
+              <p className="mt-6 text-xs leading-relaxed text-ink-subtle">
+                The link expires after a single use. Check spam if it has not
+                arrived within a minute.
+              </p>
+            </>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   )
 }

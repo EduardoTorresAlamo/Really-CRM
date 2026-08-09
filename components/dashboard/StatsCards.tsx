@@ -38,17 +38,36 @@ export default function StatsCards({
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {stats.map(({ label, value, icon: Icon, alert }) => (
-        <Card key={label} className="border-[#d9d9dd]">
-          <CardContent className="pt-6 pb-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs text-[#93939f] uppercase tracking-widest font-mono">{label}</p>
-                <p className="text-3xl font-bold text-black mt-2 tracking-tight">{value}</p>
-              </div>
-              <Icon className={`w-4 h-4 mt-1 ${alert ? 'text-black' : 'text-[#d9d9dd]'}`} />
+        <Card
+          key={label}
+          className="ring-hairline transition-shadow duration-200 ease-fluid hover:shadow-hairline"
+        >
+          <CardContent className="px-5 pb-1 pt-1">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-mono text-[10.5px] uppercase leading-[1.4] tracking-[0.14em] text-ink-subtle">
+                {label}
+              </p>
+              <Icon
+                className={alert ? 'h-4 w-4 shrink-0 text-ink' : 'h-4 w-4 shrink-0 text-hairline'}
+                strokeWidth={1.75}
+                aria-hidden
+              />
             </div>
+            {/* data-numeric locks tabular figures so the four values stay on a common
+                vertical rhythm as counts change. */}
+            <p
+              data-numeric
+              className="mt-3 text-[2rem] font-normal leading-none tracking-[-0.02em] text-ink"
+            >
+              {value}
+            </p>
+            {/* The alert is stated, not just implied by an icon colour shift -- colour
+                alone is not an accessible signal. */}
+            {alert && (
+              <p className="mt-2 text-xs text-ink-subtle">Needs attention today</p>
+            )}
           </CardContent>
         </Card>
       ))}

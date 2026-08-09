@@ -36,34 +36,51 @@ export default function MatchForm({ onSubmit, loading }: MatchFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="space-y-2">
-        <Label htmlFor="property-url">Property Listing URL</Label>
-        <div className="flex gap-2">
+        <Label
+          htmlFor="property-url"
+          className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-ink-subtle"
+        >
+          Property Listing URL
+        </Label>
+        {/* Stacks on mobile so the URL field keeps a usable width instead of being
+            squeezed by the button. */}
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             id="property-url"
             type="url"
+            inputMode="url"
+            aria-describedby="property-url-hint"
             placeholder="https://www.zillow.com/homedetails/..."
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
-            className="flex-1"
+            disabled={loading}
+            className="h-10 flex-1 px-3 text-sm"
           />
-          <Button type="submit" disabled={loading || !url.trim()}>
+          <Button
+            type="submit"
+            disabled={loading || !url.trim()}
+            className="h-10 shrink-0 px-4"
+          >
             {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Analyzing...
-              </span>
+              <>
+                <span
+                  aria-hidden
+                  className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                />
+                Analyzing
+              </>
             ) : (
-              <span className="flex items-center gap-2">
-                <Search className="w-4 h-4" />
+              <>
+                <Search className="h-4 w-4" strokeWidth={1.75} />
                 Find Matches
-              </span>
+              </>
             )}
           </Button>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Paste a link from any real estate listing site (Zillow, Realtor.com, MLS, etc.)
+      <p id="property-url-hint" className="text-xs leading-relaxed text-ink-subtle">
+        Paste a link from any real estate listing site (Zillow, Realtor.com, MLS).
       </p>
     </form>
   )

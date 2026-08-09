@@ -10,7 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { Profile } from '@/types/profile'
-import { Menu } from 'lucide-react'
+import { ChevronDown, LogOut, Menu, UserRound } from 'lucide-react'
+import Link from 'next/link'
 import MobileNav from './MobileNav'
 import { useState } from 'react'
 
@@ -51,26 +52,59 @@ export default function TopBar({ profile }: TopBarProps) {
 
   return (
     <>
-      <header className="h-14 bg-white border-b border-[#d9d9dd] flex items-center justify-between px-4 md:px-6">
+      {/* Sticky and translucent so page content scrolls under the bar rather than
+          being clipped by an opaque strip. */}
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-hairline bg-surface/80 px-4 backdrop-blur-xl backdrop-saturate-150 supports-[not(backdrop-filter:blur(0))]:bg-surface md:px-8">
         <button
-          className="md:hidden p-1 rounded-[8px] text-[#93939f] hover:bg-[#f2f2f2] hover:text-black transition-colors"
+          type="button"
+          aria-label="Open navigation"
+          className="-ml-1 rounded-md p-1.5 text-ink-subtle transition-colors duration-150 hover:bg-hairline-soft hover:text-ink md:hidden"
           onClick={() => setMobileOpen(true)}
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="h-5 w-5" strokeWidth={1.75} />
         </button>
+
         <div className="flex-1" />
+
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity outline-none">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={profile?.photo_url ?? undefined} alt={profile?.name ?? ''} />
-                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-              </Avatar>
-              <span className="hidden sm:block text-sm font-medium text-black">
-                {profile?.name ?? 'Realtor'}
-              </span>
+          <DropdownMenuTrigger className="group flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 outline-none transition-colors duration-150 hover:bg-hairline-soft">
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={profile?.photo_url ?? undefined} alt="" />
+              <AvatarFallback className="bg-hairline-soft text-[11px] font-medium text-ink">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <span className="hidden max-w-[12rem] truncate text-sm font-medium text-ink sm:block">
+              {profile?.name ?? 'Realtor'}
+            </span>
+            <ChevronDown
+              className="hidden h-3.5 w-3.5 text-ink-muted transition-transform duration-200 ease-fluid group-aria-expanded:rotate-180 sm:block"
+              strokeWidth={2}
+            />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleSignOut}>Sign Out</DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-52">
+            {/* Identifies the signed-in account before offering account actions --
+                the trigger truncates, this does not. */}
+            <div className="px-2 py-1.5">
+              <p className="truncate text-sm font-medium text-ink">
+                {profile?.name ?? 'Realtor'}
+              </p>
+              {profile?.email && (
+                <p className="truncate text-xs text-ink-subtle">{profile.email}</p>
+              )}
+            </div>
+            <div className="my-1 h-px bg-hairline-soft" />
+            <DropdownMenuItem
+              className="gap-2 px-2 py-1.5"
+              render={<Link href="/profile" />}
+            >
+              <UserRound className="h-4 w-4" strokeWidth={1.75} />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 px-2 py-1.5" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4" strokeWidth={1.75} />
+              Sign out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>

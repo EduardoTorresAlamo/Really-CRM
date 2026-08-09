@@ -1,17 +1,34 @@
-import type { Metadata } from 'next'
-import { Space_Grotesk } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
+import { Space_Grotesk, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 
+// The CSS variable names here must match the --font-* entries in globals.css's
+// @theme block. They previously did not (--font-geist-sans vs --font-sans), so
+// font-sans and font-mono both resolved to nothing and fell back to the UA font.
 const spaceGrotesk = Space_Grotesk({
-  variable: '--font-geist-sans',
+  variable: '--font-app-sans',
   subsets: ['latin'],
   weight: ['400', '500', '700'],
+  display: 'swap',
+})
+
+// Carries the uppercase technical labels DESIGN.md §3 assigns to CohereMono.
+const jetbrainsMono = JetBrains_Mono({
+  variable: '--font-app-mono',
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
   title: 'Really CRM',
   description: 'Real estate client relationship manager',
+}
+
+export const viewport: Viewport = {
+  themeColor: '#ffffff',
+  colorScheme: 'light',
 }
 
 /**
@@ -26,10 +43,13 @@ export const metadata: Metadata = {
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} h-full antialiased`}>
-      <body className="min-h-full">
+    <html
+      lang="en"
+      className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full bg-canvas">
         {children}
-        <Toaster richColors />
+        <Toaster richColors position="bottom-right" />
       </body>
     </html>
   )

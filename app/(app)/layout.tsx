@@ -33,12 +33,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .single()
 
   return (
-    <div className="flex min-h-screen bg-[#fafafa]">
+    <div className="flex min-h-[100dvh] bg-canvas">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col">
         <TopBar profile={profile as Profile | null} />
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
-          {children}
+        {/* The measure is capped so tables and card grids do not stretch to 2560px
+            on a wide monitor; px-6 keeps content off the sidebar hairline. */}
+        <main className="flex-1 overflow-auto px-4 py-6 md:px-8 md:py-8">
+          <div className="mx-auto w-full max-w-[1360px]">{children}</div>
         </main>
       </div>
     </div>

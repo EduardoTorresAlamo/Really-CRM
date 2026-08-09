@@ -45,11 +45,13 @@ export default async function DashboardPage() {
   ])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-black">Dashboard</h1>
-        <p className="text-sm text-[#93939f] mt-1 uppercase tracking-widest font-mono text-xs">Welcome back</p>
-      </div>
+    <div className="space-y-8">
+      <header>
+        <h1 className="text-[2rem] font-normal leading-tight text-ink">Dashboard</h1>
+        <p className="mt-1.5 text-sm text-ink-subtle">
+          {format(new Date(), "EEEE, d MMMM")}
+        </p>
+      </header>
 
       <StatsCards
         totalClients={totalClients ?? 0}
@@ -58,7 +60,7 @@ export default async function DashboardPage() {
         overdueFollowUps={overdueFollowUps ?? 0}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Cast via unknown because the nested join shape `clients(id, name)` isn't typed by the Supabase codegen */}
         <TodayFollowUps followUps={(todayFollowUps ?? []) as unknown as FollowUpItem[]} />
         <RecentClients clients={(recentClients ?? []) as Client[]} />

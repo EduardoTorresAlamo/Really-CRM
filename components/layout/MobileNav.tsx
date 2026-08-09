@@ -40,27 +40,41 @@ export default function MobileNav({ open, onClose }: MobileNavProps) {
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-56 p-0">
-        <SheetHeader className="px-6 py-6">
-          <SheetTitle className="text-left text-xl font-bold">Really CRM</SheetTitle>
+      <SheetContent side="left" className="w-60 bg-surface p-0">
+        <SheetHeader className="px-5 py-6">
+          <SheetTitle className="text-left font-mono text-[13px] font-medium uppercase tracking-[0.14em] text-ink">
+            Really CRM
+          </SheetTitle>
         </SheetHeader>
-        <nav className="px-3 space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-[11px] text-sm transition-colors',
-                pathname === href || pathname.startsWith(href + '/')
-                  ? 'bg-[#f2f2f2] text-black font-medium'
-                  : 'text-[#93939f] hover:bg-[#f2f2f2] hover:text-[#1863dc]'
-              )}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
-            </Link>
-          ))}
+        {/* Mirrors the desktop Sidebar states exactly -- the same route must not look
+            like two different things depending on viewport width. */}
+        <nav className="space-y-0.5 px-3" aria-label="Primary">
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(href + '/')
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150',
+                  active
+                    ? 'bg-hairline-soft font-medium text-ink'
+                    : 'text-ink-subtle active:bg-hairline-soft/70'
+                )}
+              >
+                <Icon
+                  className={cn(
+                    'h-4 w-4 shrink-0',
+                    active ? 'text-ink' : 'text-ink-muted'
+                  )}
+                  strokeWidth={1.75}
+                />
+                {label}
+              </Link>
+            )
+          })}
         </nav>
       </SheetContent>
     </Sheet>

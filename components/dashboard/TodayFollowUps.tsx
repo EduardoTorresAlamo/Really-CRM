@@ -34,35 +34,74 @@ interface TodayFollowUpsProps {
  */
 export default function TodayFollowUps({ followUps }: TodayFollowUpsProps) {
   return (
-    <Card className="border-[#d9d9dd]">
-      <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-[#f2f2f2]">
-        <CardTitle className="text-base font-semibold tracking-tight text-black">Today&apos;s Follow-ups</CardTitle>
-        <span className="text-xs font-mono uppercase tracking-widest text-[#93939f]">
+    <Card className="ring-hairline">
+      <CardHeader className="flex flex-row items-center justify-between border-b border-hairline-soft pb-3">
+        <CardTitle className="text-base font-medium text-ink">
+          Today&apos;s Follow-ups
+        </CardTitle>
+        <span
+          data-numeric
+          className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-ink-subtle"
+        >
           {followUps.length} due
         </span>
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent className="pt-1">
         {followUps.length === 0 ? (
-          <p className="text-sm text-[#93939f] text-center py-6">
-            No follow-ups due today.
-          </p>
+          <div className="py-8 text-center">
+            <p className="text-sm text-ink-subtle">Nothing due today.</p>
+            <p className="mt-1 text-xs text-ink-muted">
+              Scheduled follow-ups appear here on their date.
+            </p>
+          </div>
         ) : (
-          <div className="space-y-0">
-            {followUps.map((fu) => (
-              <div key={fu.id} className="flex items-center justify-between gap-3 py-3 border-b border-[#f2f2f2] last:border-0">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-black truncate">{fu.clients?.name ?? 'Unknown'}</p>
-                  {fu.notes && (
-                    <p className="text-xs text-[#93939f] truncate mt-0.5">{fu.notes}</p>
+          <div>
+            {followUps.map((fu) => {
+              const row = (
+                <>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink">
+                      {fu.clients?.name ?? 'Unknown client'}
+                    </p>
+                    {fu.notes && (
+                      <p className="mt-0.5 truncate text-xs text-ink-subtle">
+                        {fu.notes}
+                      </p>
+                    )}
+                  </div>
+                  {fu.clients?.id && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
+                        'shrink-0 bg-transparent text-ink-muted transition-colors duration-150 group-hover:text-interaction'
+                      )}
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    </span>
                   )}
+                </>
+              )
+
+              // A follow-up whose client row was deleted has nowhere to link to, so it
+              // renders as a plain row rather than a link that goes to /clients/undefined.
+              return fu.clients?.id ? (
+                <Link
+                  key={fu.id}
+                  href={`/clients/${fu.clients.id}`}
+                  className="group -mx-2 flex items-center justify-between gap-3 rounded-lg border-b border-hairline-soft px-2 py-3 transition-colors duration-150 last:border-0 hover:bg-hairline-soft/60"
+                >
+                  {row}
+                </Link>
+              ) : (
+                <div
+                  key={fu.id}
+                  className="-mx-2 flex items-center justify-between gap-3 border-b border-hairline-soft px-2 py-3 last:border-0"
+                >
+                  {row}
                 </div>
-                {fu.clients?.id && (
-                  <Link href={`/clients/${fu.clients.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'shrink-0 hover:text-[#1863dc]')}>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </CardContent>
