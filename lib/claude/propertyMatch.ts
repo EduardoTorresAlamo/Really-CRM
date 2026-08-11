@@ -1,161 +1,173 @@
 /**
- * Claude AI helpers for the property-match feature.
+ * Property-match helpers -- pure, local implementation with NO external AI API.
  *
- * This module exports two functions that each make a separate Claude API call:
- *  1. parsePropertyListing  -- extracts structured data from a listing URL.
- *  2. matchClientsToProperty -- ranks buyer clients against the parsed listing.
+ * Exports the same two functions the rest of the app already depends on:
+ *  1. parsePropertyListing   -- extracts structured data from a listing URL using
+ *                               best-effort HTML fetch + regex heuristics (falls back
+ *                               to parsing the URL slug when the page can't be read).
+ *  2. matchClientsToProperty -- ranks buyer clients against the parsed listing with a
+ *                               deterministic weighted-scoring algorithm.
  *
- * Both functions use claude-sonnet-4-6 and return validated, typed results via Zod.
+ * No API key required. Replaces the previous Claude/Anthropic-backed version.
  */
-import Anthropic from '@anthropic-ai/sdk'
-import { z } from 'zod'
 import type { ParsedProperty, MatchResult } from '@/types/propertyMatch'
-import type { Client } from '@/types/client'
+import type { Client, PropertyType, SaleType } from '@/types/client'
 
-// Single shared Anthropic client -- instantiating once avoids repeated SDK initialization overhead
-const client = new Anthropic()
+/** Maps free-text keywords found in a listing to a canonical PropertyType. */
+const PROPERTY_TYPE_KEYWORDS: Record<PropertyType, string[]> = {
+  house: ['house', 'casa', 'single family', 'townhouse', 'villa'],
+  condo: ['condo', 'condominio', 'condominium'],
+  apartment: ['apartment', 'apartamento', 'apto', 'flat', 'walk-up', 'walkup'],
+  land: ['land', 'terreno', 'solar', 'lot', 'finca'],
+  commercial: ['commercial', 'comercial', 'office', 'oficina', 'retail', 'local comercial'],
+}
 
-// Zod schema used to validate the JSON Claude returns for a single property listing
-const ParsedPropertySchema = z.object({
-  price: z.number().nullable(),
-  location: z.string().nullable(),
-  propertyType: z.enum(['house', 'condo', 'apartment', 'land', 'commercial']).nullable(),
-  bedrooms: z.number().nullable(),
-  bathrooms: z.number().nullable(),
-  saleType: z.enum(['cash', 'loan']).nullable(),
-  rawDescription: z.string(),
-})
+/** Parses the first plausible money amount out of a text blob (e.g. "$385,000"). */
+function extractPrice(text: string): number | null {
+  const match = text.match(/\$\s?([0-9][0-9.,]{2,})/)
+  if (!match) return null
+  // Strip thousands separators; treat "." as a decimal only when it looks like cents.
+  const digits = match[1].replace(/,/g, '')
+  const value = Number.parseFloat(digits)
+  return Number.isFinite(value) && value > 0 ? Math.round(value) : null
+}
 
-// Zod schema for a single matched client result returned by the second Claude call
-const MatchResultSchema = z.object({
-  clientId: z.string(),
-  clientName: z.string(),
-  matchScore: z.enum(['high', 'medium', 'low']),
-  explanation: z.string(),
-})
+/** Extracts a bedroom or bathroom count given a set of unit keywords. */
+function extractCount(text: string, units: string[]): number | null {
+  const re = new RegExp(`(\\d+(?:\\.\\d)?)\\s*(?:${units.join('|')})`, 'i')
+  const match = text.match(re)
+  if (!match) return null
+  const value = Number.parseFloat(match[1])
+  return Number.isFinite(value) ? value : null
+}
 
-// Array-level schema wrapping MatchResultSchema for batch validation of the ranking response
-const MatchResultArraySchema = z.array(MatchResultSchema)
+/** Picks a PropertyType by scanning the text for the first matching keyword. */
+function extractPropertyType(text: string): PropertyType | null {
+  const lower = text.toLowerCase()
+  for (const [type, keywords] of Object.entries(PROPERTY_TYPE_KEYWORDS) as [PropertyType, string[]][]) {
+    if (keywords.some((kw) => lower.includes(kw))) return type
+  }
+  return null
+}
+
+/** Infers cash vs. loan financing from listing text, or null when not stated. */
+function extractSaleType(text: string): SaleType | null {
+  const lower = text.toLowerCase()
+  if (/\b(cash|contado|efectivo)\b/.test(lower)) return 'cash'
+  if (/\b(loan|financ|préstamo|prestamo|mortgage|hipoteca|fha|va loan)\b/.test(lower)) return 'loan'
+  return null
+}
 
 /**
- * Calls Claude to extract structured property data from a listing URL.
- *
- * The URL is sanitized (control characters stripped, length capped) before being
- * injected into the prompt to prevent prompt injection via malicious URLs.
- *
- * Claude is instructed to return raw JSON only -- no markdown fences, no explanation.
- * The response is validated with ParsedPropertySchema; if initial JSON.parse fails,
- * a regex fallback attempts to extract the first JSON object from the response body
- * in case Claude emitted surrounding text despite the instruction.
- *
- * @param url - The property listing URL to analyze.
- * @returns A ParsedProperty object with extracted fields; any field Claude couldn't
- *          determine is null.
- * @throws If Claude's response cannot be parsed into valid JSON or the schema rejects it.
+ * Best-effort location guess: the humanized last meaningful segment of the URL path,
+ * or a "in <place>" / "en <lugar>" phrase from the page text.
  */
-export async function parsePropertyListing(url: string): Promise<ParsedProperty> {
-  // Strip control characters and cap length to prevent prompt injection and token overflow
-  const safeUrl = url.replace(/[\r\n\t]/g, ' ').slice(0, 2048)
-
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system: `You are a real estate data extraction assistant. Given a property listing URL,
-extract structured data and return ONLY valid JSON with these keys:
-- price: number or null
-- location: string or null (city/neighborhood/area)
-- propertyType: one of "house"|"condo"|"apartment"|"land"|"commercial" or null
-- bedrooms: number or null
-- bathrooms: number or null
-- saleType: "cash"|"loan"|null (null if not specified)
-- rawDescription: string (brief 1-2 sentence summary)
-
-Return ONLY the JSON object, no markdown, no explanation.`,
-    messages: [
-      {
-        role: 'user',
-        content: `Extract property data from this listing URL: ${safeUrl}
-
-Note: If you cannot access the URL directly, analyze the URL structure and any information
-you can infer from it. Return your best estimate with available information, using null for
-fields you truly cannot determine.`,
-      },
-    ],
-  })
-
-  const text = message.content[0].type === 'text' ? message.content[0].text : ''
+function extractLocation(text: string, url: string): string | null {
+  const phrase = text.match(/\b(?:in|en)\s+([A-ZÁÉÍÓÚÑ][\w áéíóúñ.'-]{2,40})/)
+  if (phrase) return phrase[1].trim()
 
   try {
-    const raw = JSON.parse(text.trim())
-    return ParsedPropertySchema.parse(raw)
-  } catch {
-    // Try to extract JSON from the response if initial parsing fails
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      const raw = JSON.parse(jsonMatch[0])
-      return ParsedPropertySchema.parse(raw)
+    const { pathname } = new URL(url)
+    const segments = pathname.split('/').filter(Boolean)
+    // Prefer a segment that looks like a place name (letters + hyphens, no pure digits).
+    const candidate = [...segments].reverse().find((s) => /[a-zA-Z]/.test(s) && !/^\d+$/.test(s))
+    if (candidate) {
+      return candidate
+        .replace(/[-_]+/g, ' ')
+        .replace(/\.[a-z]+$/i, '')
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+        .trim()
     }
-    throw new Error('Failed to parse property data from Claude response')
+  } catch {
+    // ignore malformed URLs -- caller already validated, but stay defensive
   }
+  return null
+}
+
+/** Strips HTML tags and collapses whitespace so regex heuristics run over readable text. */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /**
- * A stripped-down projection of a Client, containing only the fields relevant
- * to property matching. Sent to Claude instead of the full Client row to reduce
- * token usage and avoid leaking sensitive contact details in the prompt.
- */
-interface CondensedClient {
-  id: string
-  name: string
-  budgetMin: number | null
-  budgetMax: number | null
-  preferredLocations: string[] | null
-  propertyTypes: string[] | null
-  saleType: string | null
-  bedroomsMin: number | null
-  bedroomsMax: number | null
-  bathroomsMin: number | null
-}
-
-/**
- * Maps a full Client row to the minimal CondensedClient shape.
- * Excludes email, phone, notes, and other PII that are irrelevant to property matching.
+ * Extracts structured property data from a listing URL without any AI API.
  *
- * @param c - The full Client database row.
- * @returns A condensed representation suitable for inclusion in the Claude prompt.
+ * Tries to fetch the page (short timeout) and scrape price/beds/baths/type from the
+ * HTML; whatever can't be read is inferred from the URL slug. Every field the parser
+ * can't determine is returned as null -- the matcher only scores on fields that exist.
+ *
+ * @param url - The property listing URL to analyze.
+ * @returns A ParsedProperty with best-effort fields; unknown values are null.
  */
-function condensedView(c: Client): CondensedClient {
+export async function parsePropertyListing(url: string): Promise<ParsedProperty> {
+  const safeUrl = url.replace(/[\r\n\t]/g, ' ').slice(0, 2048)
+
+  let pageText = ''
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch(safeUrl, {
+      signal: controller.signal,
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReallyCRM/1.0)' },
+    })
+    clearTimeout(timeout)
+    if (res.ok) {
+      const html = (await res.text()).slice(0, 500_000)
+      pageText = htmlToText(html)
+    }
+  } catch {
+    // Network failure, timeout, blocked bot, etc. -- fall back to URL-only parsing.
+  }
+
+  // Decode the URL itself so slug words ("3-bed-guaynabo") feed the heuristics too.
+  let decodedUrl = safeUrl
+  try {
+    decodedUrl = decodeURIComponent(safeUrl)
+  } catch {
+    // leave as-is if the URL contains an invalid escape sequence
+  }
+  const haystack = `${pageText} ${decodedUrl.replace(/[-_/]+/g, ' ')}`
+
+  const rawDescription = pageText ? pageText.slice(0, 500) : `Listado: ${safeUrl}`
+
   return {
-    id: c.id,
-    name: c.name,
-    budgetMin: c.budget_min,
-    budgetMax: c.budget_max,
-    preferredLocations: c.preferred_locations,
-    propertyTypes: c.property_types,
-    saleType: c.sale_type,
-    bedroomsMin: c.bedrooms_min,
-    bedroomsMax: c.bedrooms_max,
-    bathroomsMin: c.bathrooms_min,
+    price: extractPrice(haystack),
+    location: extractLocation(pageText, safeUrl),
+    propertyType: extractPropertyType(haystack),
+    bedrooms: extractCount(haystack, ['bed', 'bd', 'br', 'hab', 'cuartos?', 'recámaras?', 'recamaras?', 'dormitorios?']),
+    bathrooms: extractCount(haystack, ['bath', 'ba', 'baños?', 'banos?']),
+    saleType: extractSaleType(haystack),
+    rawDescription,
   }
 }
 
+/** Case-insensitive "does either string contain the other" test for fuzzy location matching. */
+function locationMatches(propertyLocation: string, preferred: string[]): boolean {
+  const p = propertyLocation.toLowerCase()
+  return preferred.some((loc) => {
+    const l = loc.toLowerCase().trim()
+    return l.length > 0 && (p.includes(l) || l.includes(p))
+  })
+}
+
 /**
- * Calls Claude to rank a list of buyer clients by how well they match a given property.
+ * Ranks buyer clients against a property with a deterministic weighted score.
  *
- * Each client is condensed to only the preference fields before being serialized into
- * the prompt, keeping token count low. Claude ranks them and returns a JSON array sorted
- * best-to-worst, omitting clients that are clearly incompatible.
- *
- * The match criteria Claude applies: budget range, preferred locations (flexible/fuzzy),
- * property type, bedroom/bathroom minimums, and sale type.
- *
- * If the response cannot be parsed, an empty array is returned rather than throwing,
- * so callers always receive a valid (possibly empty) result set.
+ * Each criterion (budget, location, property type, bedrooms, bathrooms, sale type) is
+ * only scored when BOTH the property and the client specify it, so missing data never
+ * penalizes a client. The final score is the share of applicable weight satisfied.
+ * Hard mismatches -- wrong property type or a price well outside the budget -- drop the
+ * client entirely rather than returning a low score.
  *
  * @param property - The parsed property to match against.
- * @param clients - The realtor's active buyer clients pulled from the database.
- * @returns An array of MatchResult objects sorted descending by match quality. Returns
- *          an empty array if there are no clients or Claude's response is unparseable.
+ * @param clients  - The realtor's active buyer clients.
+ * @returns MatchResult[] sorted best-to-worst; empty when no client is compatible.
  */
 export async function matchClientsToProperty(
   property: ParsedProperty,
@@ -163,59 +175,95 @@ export async function matchClientsToProperty(
 ): Promise<MatchResult[]> {
   if (clients.length === 0) return []
 
-  // Reduce each full Client row to only preference fields before sending to Claude
-  const condensed = clients.map(condensedView)
+  const results: (MatchResult & { score: number })[] = []
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
-    system: `You are a real estate client matching assistant. Given a property listing and a list
-of buyer clients with their preferences, rank the clients by how well the property matches
-their needs.
+  for (const c of clients) {
+    let earned = 0
+    let possible = 0
+    let disqualified = false
+    const reasons: string[] = []
 
-Return ONLY a valid JSON array (no markdown, no explanation) sorted by match quality (best first):
-[
-  {
-    "clientId": "uuid",
-    "clientName": "name",
-    "matchScore": "high"|"medium"|"low",
-    "explanation": "2-3 sentence explanation"
-  }
-]
-
-Only include clients with at least a "low" match. Omit clients who are clearly incompatible
-(e.g., wrong property type, price far out of range, wrong location).
-
-Match criteria:
-- Budget: property price should fall within or near the client's range
-- Location: property location should match preferred locations (flexible matching)
-- Property type: should be in the client's preferred types
-- Bedrooms/bathrooms: should meet minimums
-- Sale type: if specified, should match`,
-    messages: [
-      {
-        role: 'user',
-        content: `Property:
-${JSON.stringify(property, null, 2)}
-
-Active Buyer Clients:
-${JSON.stringify(condensed, null, 2)}`,
-      },
-    ],
-  })
-
-  const text = message.content[0].type === 'text' ? message.content[0].text : '[]'
-
-  try {
-    const raw = JSON.parse(text.trim())
-    return MatchResultArraySchema.parse(raw)
-  } catch {
-    // Try to extract JSON array from the response if initial parsing fails
-    const jsonMatch = text.match(/\[[\s\S]*\]/)
-    if (jsonMatch) {
-      const raw = JSON.parse(jsonMatch[0])
-      return MatchResultArraySchema.parse(raw)
+    // --- Budget (weight 3) ---
+    if (property.price != null && (c.budget_min != null || c.budget_max != null)) {
+      possible += 3
+      const min = c.budget_min ?? 0
+      const max = c.budget_max ?? Number.POSITIVE_INFINITY
+      if (property.price >= min && property.price <= max) {
+        earned += 3
+        reasons.push('Precio dentro de presupuesto')
+      } else if (max !== Number.POSITIVE_INFINITY && property.price <= max * 1.1) {
+        earned += 1.5
+        reasons.push('Precio algo sobre su tope')
+      } else if (property.price < min * 0.9 || (max !== Number.POSITIVE_INFINITY && property.price > max * 1.15)) {
+        disqualified = true // price is well outside what they'll consider
+      }
     }
-    return []
+
+    // --- Property type (weight 2) ---
+    if (property.propertyType != null && c.property_types && c.property_types.length > 0) {
+      possible += 2
+      if (c.property_types.includes(property.propertyType)) {
+        earned += 2
+        reasons.push('Tipo de propiedad correcto')
+      } else {
+        disqualified = true // client explicitly wants other property types
+      }
+    }
+
+    // --- Location (weight 2) ---
+    if (property.location != null && c.preferred_locations && c.preferred_locations.length > 0) {
+      possible += 2
+      if (locationMatches(property.location, c.preferred_locations)) {
+        earned += 2
+        reasons.push('Zona preferida')
+      }
+    }
+
+    // --- Bedrooms (weight 1) ---
+    if (property.bedrooms != null && (c.bedrooms_min != null || c.bedrooms_max != null)) {
+      possible += 1
+      const okMin = c.bedrooms_min == null || property.bedrooms >= c.bedrooms_min
+      const okMax = c.bedrooms_max == null || property.bedrooms <= c.bedrooms_max
+      if (okMin && okMax) {
+        earned += 1
+        reasons.push('Cumple cuartos')
+      }
+    }
+
+    // --- Bathrooms (weight 1) ---
+    if (property.bathrooms != null && c.bathrooms_min != null) {
+      possible += 1
+      if (property.bathrooms >= c.bathrooms_min) {
+        earned += 1
+        reasons.push('Cumple baños')
+      }
+    }
+
+    // --- Sale type (weight 1) ---
+    if (property.saleType != null && c.sale_type != null) {
+      possible += 1
+      if (property.saleType === c.sale_type) {
+        earned += 1
+        reasons.push('Forma de pago compatible')
+      }
+    }
+
+    if (disqualified) continue
+    if (possible === 0) continue // no comparable fields -- nothing to say about this client
+
+    const score = Math.round((earned / possible) * 100)
+    const matchScore: MatchResult['matchScore'] = score >= 70 ? 'high' : score >= 40 ? 'medium' : 'low'
+
+    results.push({
+      clientId: c.id,
+      clientName: c.name,
+      matchScore,
+      explanation: reasons.length > 0 ? `${reasons.join('. ')}.` : 'Coincidencia parcial con sus preferencias.',
+      score,
+    })
   }
+
+  return results
+    .sort((a, b) => b.score - a.score)
+    .map(({ score: _score, ...rest }) => rest)
 }
