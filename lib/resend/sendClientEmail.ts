@@ -1,10 +1,6 @@
 import { Resend } from 'resend'
 
-/**
- * Escapes HTML special characters so realtor-authored subject/body text and
- * client names cannot inject markup into the email. Newlines are converted to
- * <br> after escaping so plain-text templates render with their line breaks.
- */
+// Escapes HTML so realtor-authored subject/body and client names can't inject markup.
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -14,30 +10,16 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-/**
- * Parameters for sending a single client-facing email (used by bulk send).
- */
+// Params are already placeholder-substituted but still raw (unescaped) text.
 interface ClientEmailParams {
-  /** The client's email address. */
   to: string
-  /** Email subject line (already placeholder-substituted, still raw text). */
   subject: string
-  /** Email body as plain text with newlines (already placeholder-substituted). */
   body: string
-  /** Realtor display name shown in the sign-off footer. */
   realtorName: string
 }
 
-/**
- * Sends a plain-text-style email to a client via Resend, wrapping the body in a
- * minimal branded HTML shell. Both subject and body are HTML-escaped; body
- * newlines become <br> so multi-paragraph templates render correctly.
- *
- * RESEND_FROM_EMAIL must be a verified sender in your Resend account.
- *
- * @param params - Recipient, subject, body, and realtor name.
- * @throws If Resend returns an error.
- */
+// Sends a client email via Resend in a minimal branded HTML shell. Subject/body are escaped and
+// body newlines become <br>. RESEND_FROM_EMAIL must be a verified sender. Throws on Resend errors.
 export async function sendClientEmail({ to, subject, body, realtorName }: ClientEmailParams) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const safeBody = escapeHtml(body).replace(/\n/g, '<br />')

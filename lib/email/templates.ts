@@ -77,17 +77,8 @@ export const PREDEFINED_TEMPLATES: PickableTemplate[] = [
   },
 ]
 
-/**
- * Replaces `{{clientName}}` and `{{propertyAddress}}` tokens in a template string.
- *
- * Missing values fall back to a neutral placeholder rather than an empty string,
- * so a partially-filled email never reads awkwardly (e.g. "Hi ,"). Whitespace
- * inside the braces is tolerated: `{{ clientName }}` also matches.
- *
- * @param text - The subject or body containing `{{token}}` placeholders.
- * @param vars - The values to substitute.
- * @returns The text with known placeholders replaced.
- */
+// Replaces {{clientName}}/{{propertyAddress}} tokens (whitespace inside braces tolerated).
+// Missing values fall back to a neutral placeholder so a partial email never reads "Hi ,".
 export function applyTemplate(text: string, vars: TemplateVars): string {
   const map: Record<string, string> = {
     clientName: vars.clientName?.trim() || 'there',

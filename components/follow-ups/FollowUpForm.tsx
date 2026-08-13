@@ -14,36 +14,17 @@ import { toast } from 'sonner'
 import TemplatePicker from '@/components/templates/TemplatePicker'
 import { applyTemplate } from '@/lib/email/templates'
 
-/**
- * Props for the FollowUpForm component.
- */
 interface FollowUpFormProps {
-  /** UUID of the client this follow-up is being created for. */
   clientId: string
-  /** UUID of the authenticated realtor, stored as realtor_id on the inserted row. */
   realtorId: string
-  /** Client name, used to substitute {{clientName}} when a template is picked. */
-  clientName?: string
-  /** Callback invoked after the follow-up has been successfully inserted. */
+  clientName?: string // substitutes {{clientName}} when a template is picked
   onSuccess: () => void
-  /** Callback invoked when the user dismisses the form without saving. */
   onCancel: () => void
 }
 
-/**
- * Inline form for scheduling a new follow-up for a client.
- *
- * The date picker uses a Popover + Calendar combination; selecting a date
- * closes the popover automatically to reduce clicks. The date is stored as an
- * ISO string (yyyy-MM-dd) in the database to avoid timezone issues with full
- * Date objects -- follow-ups are date-only, not datetime.
- *
- * email_sent is initialized to false so the daily cron job picks up this
- * follow-up if it isn't manually emailed before the scheduled date.
- *
- * @param props - FollowUpFormProps including client/realtor IDs and callbacks.
- * @returns The follow-up creation form JSX.
- */
+// Inline form to schedule a follow-up. The date is stored as a date-only ISO string (yyyy-MM-dd)
+// to dodge timezone issues. email_sent starts false so the daily cron picks it up if not sent
+// manually first.
 export default function FollowUpForm({ clientId, realtorId, clientName, onSuccess, onCancel }: FollowUpFormProps) {
   const supabase = createClient()
   const [date, setDate] = useState<Date>()

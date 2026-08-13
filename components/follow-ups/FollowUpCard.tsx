@@ -10,35 +10,15 @@ import { CheckCircle2, Trash2, Mail, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { FollowUp } from '@/types/followUp'
 
-/**
- * Props for the FollowUpCard component.
- */
 interface FollowUpCardProps {
-  /** The follow-up record to display. */
   followUp: FollowUp
-  /** Callback invoked after the follow-up has been deleted from the database. */
   onDelete: (id: string) => void
-  /** Callback invoked after the follow-up has been marked as completed in the database. */
   onComplete: (id: string) => void
 }
 
-/**
- * Card component representing a single scheduled follow-up.
- *
- * Visual state:
- *   - Overdue (past date, not today, not completed): red border and background.
- *   - Due today (not completed): orange border and background.
- *   - Completed: dimmed (opacity-60) with no action buttons.
- *
- * isPast() from date-fns returns true for today as well, so isToday() is checked
- * explicitly to keep "due today" and "overdue" as distinct visual states.
- *
- * The "Email" button triggers /api/send-followup-email rather than calling Resend
- * directly, because the Resend API key must stay server-side.
- *
- * @param props - FollowUpCardProps including the follow-up record and callbacks.
- * @returns A follow-up card JSX element.
- */
+// A single scheduled follow-up. Visual state: overdue = red, due today = orange, completed =
+// dimmed. isPast() is true for today too, so isToday() is checked to keep the states distinct.
+// The "Email" button hits /api/send-followup-email so the Resend key stays server-side.
 export default function FollowUpCard({ followUp, onDelete, onComplete }: FollowUpCardProps) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)

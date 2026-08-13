@@ -6,20 +6,8 @@ import RecentClients from '@/components/dashboard/RecentClients'
 import type { Client } from '@/types/client'
 import { format } from 'date-fns'
 
-/**
- * Dashboard page -- the landing screen after login.
- *
- * Fires six Supabase count/select queries concurrently via Promise.all to avoid
- * sequential round-trips. The queries are all independent and scoped to the
- * authenticated realtor's data via .eq('realtor_id', user.id).
- *
- * Data passed to child components:
- *   - StatsCards: aggregate counts (total, buyers, sellers, overdue)
- *   - TodayFollowUps: follow-ups scheduled for today that are not yet complete
- *   - RecentClients: the 5 most recently created clients
- *
- * @returns The dashboard page JSX.
- */
+// Dashboard — landing screen after login. Fires six independent Supabase queries concurrently,
+// all scoped by realtor_id, feeding StatsCards (counts), TodayFollowUps, and RecentClients.
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

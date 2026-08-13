@@ -24,39 +24,17 @@ const DOC_TYPES: { value: DocType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
-/**
- * Props for the DocumentUploadDialog component.
- */
 interface DocumentUploadDialogProps {
-  /** Whether the dialog is open. */
   open: boolean
-  /** Callback to close the dialog. */
   onClose: () => void
-  /** UUID of the client this document belongs to. */
   clientId: string
-  /** UUID of the authenticated realtor, used to scope the storage path. */
   realtorId: string
-  /** Callback invoked after a successful upload so the parent can refresh its document list. */
   onSuccess: () => void
 }
 
-/**
- * Modal dialog for uploading a document to a client's record.
- *
- * Upload flow:
- *   1. User selects a file and document type.
- *   2. handleUpload calls uploadFile() which writes to the "documents" Supabase Storage bucket.
- *      The storage path is namespaced as {realtorId}/{clientId}/{timestamp}_{filename} so
- *      RLS bucket policies can be scoped per realtor without a collision risk.
- *   3. After a successful storage upload, a row is inserted into the documents table with
- *      the public URL and metadata.
- *   4. onSuccess is called so the parent re-fetches the updated document list.
- *
- * Local state is cleared on close so the dialog is blank if reopened.
- *
- * @param props - DocumentUploadDialogProps.
- * @returns The upload dialog JSX.
- */
+// Modal to upload a document to a client's record. uploadFile writes to the "documents" bucket at
+// {realtorId}/{clientId}/{timestamp}_{filename} (so RLS policies scope per realtor, no collisions),
+// then a documents row is inserted. Local state is cleared on close.
 export default function DocumentUploadDialog({
   open,
   onClose,

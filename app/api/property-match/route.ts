@@ -4,25 +4,9 @@ import { parsePropertyListing, matchClientsToProperty } from '@/lib/claude/prope
 import { isRateLimited } from '@/lib/rateLimit'
 import type { Client } from '@/types/client'
 
-/**
- * POST /api/property-match
- *
- * Accepts a property listing URL and orchestrates two sequential Claude API calls:
- *   1. parsePropertyListing  -- extracts structured fields from the URL.
- *   2. matchClientsToProperty -- ranks the realtor's active buyer clients against that property.
- *
- * Request body: { url: string }
- * Response: { property: ParsedProperty, matches: MatchResult[] }
- *
- * Rate limited to 10 requests per user per minute to cap Claude API spend.
- * Returns 401 if the session cookie is absent or expired (auth via Supabase RLS).
- * Returns 502 if either Claude call fails, so callers can show a generic error.
- *
- * @param request - The incoming Next.js request object.
- * @returns JSON response with the parsed property and ranked client matches.
- */
-// POST { url: string } -> { property: ParsedProperty, matches: MatchResult[] }
-// Orchestrates two Claude calls: first to parse the listing, then to rank active buyer clients against it
+// POST /api/property-match { url } -> { property: ParsedProperty, matches: MatchResult[] }
+// Parses the listing then ranks the realtor's active buyer clients against it (local algorithm,
+// no external API). Rate limited to 10/min per user. 401 if unauthenticated, 502 on failure.
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

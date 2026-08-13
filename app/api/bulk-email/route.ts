@@ -8,24 +8,10 @@ import type { Client } from '@/types/client'
 /** Maximum recipients accepted in a single bulk-email request. */
 const MAX_RECIPIENTS = 100
 
-/**
- * POST /api/bulk-email
- *
- * Sends one email per selected client via Resend and logs a `client_history`
- * row for each successful send. Runs server-side so the Resend key and the
- * per-client placeholder substitution stay off the client.
- *
- * Clients are re-fetched with `.eq('realtor_id', user.id)` so a realtor can only
- * email their own clients regardless of the ids posted. Subject and body are
- * templated per client: `{{clientName}}` uses the client name and
- * `{{propertyAddress}}` uses the client's first preferred location.
- *
- * Request body: { clientIds: string[], subject: string, body: string }
- * Response: { sent: number, skipped: number } or { error: string }
- *
- * @param request - The incoming Next.js request.
- * @returns JSON summary or error response.
- */
+// POST /api/bulk-email { clientIds, subject, body } — sends one templated email per client via
+// Resend and logs a client_history row per success. Clients are re-fetched with
+// .eq('realtor_id', user.id) so posted ids are never trusted. Templating: {{clientName}} and
+// {{propertyAddress}} (first preferred location). Response: { sent, skipped }.
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

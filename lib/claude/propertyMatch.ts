@@ -95,16 +95,8 @@ function htmlToText(html: string): string {
     .trim()
 }
 
-/**
- * Extracts structured property data from a listing URL without any AI API.
- *
- * Tries to fetch the page (short timeout) and scrape price/beds/baths/type from the
- * HTML; whatever can't be read is inferred from the URL slug. Every field the parser
- * can't determine is returned as null -- the matcher only scores on fields that exist.
- *
- * @param url - The property listing URL to analyze.
- * @returns A ParsedProperty with best-effort fields; unknown values are null.
- */
+// Extracts structured property data from a listing URL — best-effort HTML scrape with a short
+// timeout, falling back to the URL slug. Fields that can't be determined are returned as null.
 export async function parsePropertyListing(url: string): Promise<ParsedProperty> {
   const safeUrl = url.replace(/[\r\n\t]/g, ' ').slice(0, 2048)
 
@@ -156,19 +148,9 @@ function locationMatches(propertyLocation: string, preferred: string[]): boolean
   })
 }
 
-/**
- * Ranks buyer clients against a property with a deterministic weighted score.
- *
- * Each criterion (budget, location, property type, bedrooms, bathrooms, sale type) is
- * only scored when BOTH the property and the client specify it, so missing data never
- * penalizes a client. The final score is the share of applicable weight satisfied.
- * Hard mismatches -- wrong property type or a price well outside the budget -- drop the
- * client entirely rather than returning a low score.
- *
- * @param property - The parsed property to match against.
- * @param clients  - The realtor's active buyer clients.
- * @returns MatchResult[] sorted best-to-worst; empty when no client is compatible.
- */
+// Ranks buyer clients against a property with a deterministic weighted score. Each criterion is
+// scored only when both sides specify it, so missing data never penalizes. Hard mismatches (wrong
+// type, price well outside budget) drop the client entirely. Returns MatchResult[] best-to-worst.
 export async function matchClientsToProperty(
   property: ParsedProperty,
   clients: Client[]

@@ -7,36 +7,16 @@ import { uploadFile } from '@/lib/storage/uploadFile'
 import { toast } from 'sonner'
 import { Camera } from 'lucide-react'
 
-/**
- * Props for the AvatarUpload component.
- */
 interface AvatarUploadProps {
-  /** The realtor's user ID, used to namespace the storage path (userId/avatar.ext). */
-  userId: string
-  /** The current avatar URL from the profiles table; null if no photo has been uploaded. */
+  userId: string // namespaces the storage path (userId/avatar.ext)
   currentUrl: string | null
-  /** The realtor's display name, used for the initials fallback avatar. */
   name: string
-  /** Callback invoked with the new public URL after a successful upload. */
   onUpload: (url: string) => void
 }
 
-/**
- * Avatar upload control shown on the profile page.
- *
- * Upload strategy:
- *   - A fixed path per user (userId/avatar.ext) combined with upsert:true means each
- *     new upload overwrites the previous avatar without creating orphaned files.
- *   - The 'avatars' bucket is public so the URL is stable and doesn't need signed access.
- *   - A local object URL is set as the preview immediately (optimistic UI) so the
- *     realtor sees their new photo before the upload completes.
- *   - If the upload fails, the preview reverts to currentUrl.
- *
- * The file input is hidden and triggered via a ref so a custom button can be styled freely.
- *
- * @param props - AvatarUploadProps with user ID, current URL, name, and upload callback.
- * @returns The avatar display + upload button JSX.
- */
+// Avatar upload for the profile page. A fixed path per user + upsert overwrites the old avatar
+// (no orphans); the 'avatars' bucket is public. Shows an optimistic local-object-URL preview and
+// reverts to currentUrl on failure. The file input is hidden and triggered via a ref.
 export default function AvatarUpload({ userId, currentUrl, name, onUpload }: AvatarUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(currentUrl)

@@ -4,30 +4,10 @@ import { createClient as createServerClient } from '@supabase/supabase-js'
 import { sendFollowUpEmail } from '@/lib/resend/sendFollowUpEmail'
 import { format, parseISO } from 'date-fns'
 
-/**
- * GET /api/cron/send-daily-followups
- *
- * Cron endpoint invoked by Vercel Cron daily at 13:00 UTC (configured in vercel.json).
- * Scans all realtors' follow-ups that are due today or overdue and not yet emailed,
- * then sends a reminder email for each one via Resend.
- *
- * Authentication: Vercel passes a Bearer token matching CRON_SECRET in the
- * Authorization header. The comparison uses timingSafeEqual (constant-time) to
- * prevent timing-based secret enumeration attacks.
- *
- * Database access: Uses the Supabase service-role key (bypasses RLS) so the cron
- * job can read all realtors' follow-ups across the entire table without being
- * scoped to a single user session.
- *
- * Failure tolerance: A failed email for one follow-up is logged but does not abort
- * processing the rest -- each follow-up is handled independently.
- *
- * Response: { sent: number } -- count of emails successfully dispatched.
- *
- * @param request - The incoming Next.js request object (must carry the cron auth header).
- * @returns JSON with the number of emails sent, or an error response.
- */
-// This endpoint is called by Vercel Cron daily at 13:00 UTC
+// GET /api/cron/send-daily-followups — Vercel Cron, daily at 13:00 UTC (vercel.json).
+// Emails a reminder for every due/overdue, unsent follow-up across all realtors. Auth is a
+// CRON_SECRET Bearer token compared in constant time. Uses the service-role key to bypass RLS.
+// One failed email is logged but doesn't abort the rest. Response: { sent: number }.
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {

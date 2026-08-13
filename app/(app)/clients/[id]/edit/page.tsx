@@ -3,19 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import ClientForm from '@/components/clients/ClientForm'
 import type { Client } from '@/types/client'
 
-/**
- * Edit client page -- pre-populates ClientForm with the existing client data.
- *
- * Fetches the client row scoped to both the client UUID and the authenticated
- * realtor's ID, so a realtor cannot edit another realtor's client even if they
- * know the UUID. Returns 404 if not found (same response for "doesn't exist"
- * and "not yours" to avoid disclosing UUID existence).
- *
- * params is a Promise in Next.js 16 App Router and must be awaited.
- *
- * @param params - Promise resolving to route parameters including the client UUID.
- * @returns The edit client page JSX.
- */
+// Edit client page — pre-populates ClientForm. The row is scoped by UUID + realtor_id, so a realtor
+// can't edit another's client; missing/not-yours both 404 (avoids disclosing UUID existence).
+// params is a Promise in Next.js 16 and must be awaited.
 export default async function EditClientPage({
   params,
 }: {
