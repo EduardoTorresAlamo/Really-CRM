@@ -61,14 +61,16 @@ export default function DocumentUploadDialog({
       // Path convention: {realtorId}/{clientId}/{timestamp}_{filename}
       // Namespaced by realtor first so RLS bucket policies can be scoped per user
       const path = `${realtorId}/${clientId}/${Date.now()}_${file.name}`
-      const fileUrl = await uploadFile('documents', path, file)
+      // Store only the storage PATH, never a public URL — the documents bucket is private
+      // and DocumentCard mints a short-lived signed URL on demand (see getSignedUrl).
+      await uploadFile('documents', path, file)
 
       const { error } = await supabase.from('documents').insert({
         client_id: clientId,
         realtor_id: realtorId,
         doc_type: docType,
         doc_status: 'received',
-        file_url: fileUrl,
+        file_url: path,
         file_name: file.name,
         notes: notes || null,
       })

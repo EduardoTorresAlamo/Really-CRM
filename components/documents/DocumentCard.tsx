@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getSignedUrl } from '@/lib/storage/uploadFile'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import DocumentStatusBadge from './DocumentStatusBadge'
 import { toast } from 'sonner'
 import { FileText, Trash2, Download } from 'lucide-react'
@@ -44,6 +44,26 @@ interface DocumentCardProps {
 export default function DocumentCard({ doc, onDelete, onStatusChange }: DocumentCardProps) {
   const supabase = createClient()
   const [deleting, setDeleting] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+
+  // Documents live in a private bucket. file_url holds the storage PATH; mint a short-lived
+  // signed URL on click. Legacy rows may still hold a full http URL — open those directly.
+  async function handleDownload() {
+    if (!doc.file_url) return
+    if (/^https?:\/\//i.test(doc.file_url)) {
+      window.open(doc.file_url, '_blank', 'noopener,noreferrer')
+      return
+    }
+    setDownloading(true)
+    try {
+      const signed = await getSignedUrl('documents', doc.file_url, 3600)
+      window.open(signed, '_blank', 'noopener,noreferrer')
+    } catch {
+      toast.error('Failed to open document')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   async function handleDelete() {
     if (!confirm('Delete this document?')) return
@@ -91,15 +111,14 @@ export default function DocumentCard({ doc, onDelete, onStatusChange }: Document
           </select>
           <div className="flex gap-1">
             {doc.file_url && (
-              <a
-                href={doc.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                download
-                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                onClick={handleDownload}
+                disabled={downloading}
               >
                 <Download className="w-3.5 h-3.5" />
-              </a>
+              </Button>
             )}
             <Button
               size="icon-sm"
