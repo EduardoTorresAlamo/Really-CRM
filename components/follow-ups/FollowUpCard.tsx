@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { format, isPast, isToday, parseISO } from 'date-fns'
+import { format, isPast, isToday, parse, parseISO } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,10 @@ export default function FollowUpCard({ followUp, onDelete, onComplete }: FollowU
   const [loading, setLoading] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
 
-  const date = parseISO(followUp.scheduled_date)
+  // scheduled_date is a date-only string. Parse it as LOCAL midnight so isToday/isPast
+  // compare against the user's calendar day — parseISO would treat it as UTC and shift
+  // the day for anyone west of UTC.
+  const date = parse(followUp.scheduled_date, 'yyyy-MM-dd', new Date())
   // isPast() returns true for today too, so explicitly exclude today to keep the two states separate
   const isOverdue = !followUp.completed && isPast(date) && !isToday(date)
   const isDueToday = !followUp.completed && isToday(date)
