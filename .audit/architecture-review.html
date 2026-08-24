@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Really-CRM · Architecture Review</title>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose' });
+</script>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#131a26; --panel2:#0f1520; --line:#223047;
+    --ink:#e6edf6; --muted:#8ea3bd; --accent:#5aa9ff; --good:#3fb950;
+    --warn:#e3b341; --crit:#f85149; --chip:#1b2536;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  header{padding:40px 32px 28px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#111a2b,#0b0f17);}
+  header h1{margin:0 0 6px;font-size:26px;letter-spacing:-.02em}
+  header .sub{color:var(--muted);font-size:14px}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 32px 80px}
+  h2{margin:38px 0 14px;font-size:20px;letter-spacing:-.01em;
+    border-left:3px solid var(--accent);padding-left:12px}
+  h3{margin:22px 0 8px;font-size:16px}
+  p{color:#cdd9e8}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card .n{font-size:30px;font-weight:700;letter-spacing:-.03em}
+  .card .l{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .mermaid{background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+    padding:18px;margin:14px 0;overflow:auto}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+  code{background:var(--chip);border:1px solid var(--line);border-radius:5px;
+    padding:1px 6px;font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfe1ff}
+  .finding{background:var(--panel);border:1px solid var(--line);border-left-width:4px;
+    border-radius:10px;padding:16px 18px;margin:16px 0}
+  .finding.crit{border-left-color:var(--crit)}
+  .finding.warn{border-left-color:var(--warn)}
+  .finding.info{border-left-color:var(--accent)}
+  .finding h3{margin:0 0 6px;display:flex;align-items:center;gap:10px}
+  .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+  .tag.crit{background:rgba(248,81,73,.15);color:#ff9d97}
+  .tag.warn{background:rgba(227,179,65,.15);color:#f2d183}
+  .tag.info{background:rgba(90,169,255,.15);color:#a9d1ff}
+  .finding .loc{color:var(--muted);font-size:12.5px;margin:2px 0 10px}
+  .finding ul{margin:8px 0 0;padding-left:18px}
+  .finding li{margin:4px 0}
+  .pill{display:inline-block;background:var(--chip);border:1px solid var(--line);
+    border-radius:20px;padding:2px 10px;font-size:12px;color:var(--muted);margin:2px 4px 2px 0}
+  .verdict{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:18px 0}
+  .muted{color:var(--muted)}
+  footer{color:var(--muted);font-size:12px;text-align:center;padding:30px;border-top:1px solid var(--line)}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Really-CRM — Architecture &amp; Code-Health Review</h1>
+  <div class="sub">Real-estate CRM · Next.js 16 · TypeScript · Supabase · Resend &nbsp;•&nbsp; Scanned 2026-08-13 · 82 source files · ~7,600 LOC (app/components/lib/types)</div>
+</header>
+
+<div class="wrap">
+
+  <div class="grid">
+    <div class="card"><div class="n">82</div><div class="l">TS/TSX source files</div></div>
+    <div class="card"><div class="n">3</div><div class="l" style="color:var(--crit)">Critical findings</div></div>
+    <div class="card"><div class="n">5</div><div class="l" style="color:var(--warn)">Warnings</div></div>
+    <div class="card"><div class="n">18</div><div class="l">supabase.from() calls in UI</div></div>
+  </div>
+
+  <div class="verdict">
+    <strong>Overall:</strong> Core business logic is <em>genuinely well-written</em> — <code>propertyMatch.ts</code>
+    is pure, deterministic, and easy to test; API routes validate input and scope every query by
+    <code>realtor_id</code>. The health problems are not the algorithms — they are
+    <strong>(1) stale documentation left behind by a recent Claude→local refactor</strong>,
+    <strong>(2) machine-generated comment bloat</strong> from a committed LLM commenting script, and
+    <strong>(3) data access hard-wired into UI components</strong>, which blocks unit testing.
+    No test suite exists. Nothing here is an emergency; all of it is cheap to fix.
+  </div>
+
+  <h2>1 · Module &amp; Dependency Map</h2>
+  <div class="mermaid">
+flowchart TD
+  subgraph UI["UI / Client Components (12 couple directly to DB)"]
+    CF["ClientForm.tsx"]
+    TABS["client tabs · follow-ups · documents · pipeline · profile · templates"]
+    PM_PAGE["property-match/page.tsx"]
+  end
+  subgraph API["app/api Route Handlers"]
+    R_PM["/property-match"]
+    R_BULK["/bulk-email"]
+    R_FU["/send-followup-email"]
+    R_CRON["/cron/send-daily-followups"]
+  end
+  subgraph LIB["lib/"]
+    PMATCH["claude/propertyMatch.ts<br/>(no Claude — misnamed dir)"]
+    TPL["email/templates.ts"]
+    RC["resend/sendClientEmail.ts"]
+    RF["resend/sendFollowUpEmail.ts"]
+    RL["rateLimit.ts (module-global Map)"]
+    SB["supabase/client + server"]
+  end
+  DB[(Supabase Postgres + RLS)]
+  RESEND[(Resend API)]
+
+  CF -->|createClient| SB
+  TABS -->|18x .from| SB
+  PM_PAGE --> R_PM
+  R_PM --> PMATCH
+  R_PM --> RL
+  R_PM --> SB
+  R_BULK --> RC
+  R_BULK --> TPL
+  R_BULK --> RL
+  R_BULK --> SB
+  R_FU --> RF
+  R_CRON --> RF
+  R_CRON --> SB
+  RC -->|dup escapeHtml| RESEND
+  RF -->|dup escapeHtml| RESEND
+  SB --> DB
+
+  style PMATCH stroke:#f85149,stroke-width:2px
+  style RC stroke:#e3b341
+  style RF stroke:#e3b341
+  style TABS stroke:#e3b341
+  </div>
+  <p class="muted">Red = stale/misnamed. Amber = duplication or tight coupling.</p>
+
+  <h2>2 · Findings</h2>
+
+  <div class="finding crit">
+    <h3><span class="tag crit">Critical</span> Stale docs: routes &amp; a whole directory still claim to use Claude</h3>
+    <div class="loc"><code>app/api/property-match/route.ts:7-25</code> · <code>lib/claude/propertyMatch.ts</code> (dir name) · <code>CLAUDE.md</code></div>
+    <p>Commit <code>0b50319</code> replaced the Claude matcher with a local algorithm. The docs never followed:</p>
+    <ul>
+      <li>Route JSDoc (lines 7-23) still reads <em>“orchestrates two sequential Claude API calls”</em>, <em>“cap Claude API spend”</em>, and <em>“Returns 502 if either Claude call fails.”</em> None of it is true — there is no Claude call. Then lines 24-25 <strong>repeat the same summary as inline comments</strong>.</li>
+      <li>The module lives in <code>lib/claude/</code> yet imports no AI SDK. <code>@anthropic-ai/sdk</code> is gone from <code>package.json</code>; <code>grep</code> finds zero anthropic references in <code>app/components/lib</code>.</li>
+      <li><code>CLAUDE.md</code> (root + workspace) still lists <code>ANTHROPIC_API_KEY</code> as a <em>required</em> env var. It is dead.</li>
+    </ul>
+    <p><strong>Fix:</strong> rename <code>lib/claude/ → lib/matching/</code>, rewrite the route header to describe the local flow, drop <code>ANTHROPIC_API_KEY</code> from docs/env examples.</p>
+  </div>
+
+  <div class="finding crit">
+    <h3><span class="tag crit">Critical</span> AI-slop generator committed to the repo — the source of the comment bloat</h3>
+    <div class="loc"><code>scripts/qwen-comment.mjs</code> (107 lines, zero inbound references)</div>
+    <p>This script pipes source files through a local Qwen model to auto-insert comments. It explains the uniform, over-formal JSDoc on trivial helpers throughout <code>lib/</code>. Examples of the resulting redundancy:</p>
+    <ul>
+      <li><code>rateLimit.ts</code>: a 13-line JSDoc block documents a 10-line function — the doc is longer than the code and repeats the one-line file header.</li>
+      <li><code>sendFollowUpEmail.ts:47</code>: a comment restates the <code>RESEND_FROM_EMAIL</code> requirement already stated in the JSDoc two lines above.</li>
+      <li><code>propertyMatch.ts</code>: every one-line private helper carries a full <code>/** … */</code> banner.</li>
+    </ul>
+    <p><strong>Fix:</strong> delete <code>scripts/qwen-comment.mjs</code> (nothing imports it) and strip machine JSDoc from private single-line helpers — keep comments that explain <em>why</em> (the good ones on the scoring weights and the <code>watch()</code> caveat).</p>
+  </div>
+
+  <div class="finding crit">
+    <h3><span class="tag crit">Critical</span> Data access wired straight into UI — untestable, tightly coupled</h3>
+    <div class="loc">12 client components import <code>@/lib/supabase/client</code>; 18 raw <code>.from('…')</code> calls live in <code>components/</code></div>
+    <p>Components like <code>ClientForm</code>, the client tabs, <code>PipelineBoard</code>, <code>FollowUpForm</code>, and <code>ProfileForm</code> build queries, mutate rows, and render — all in one file. There is no data layer to mock, so none of this logic is unit-testable without a live Supabase. Business rules (validation, status transitions) sit next to JSX.</p>
+    <p><strong>Fix:</strong> extract a thin <code>lib/data/*</code> repository per entity (<code>getClients</code>, <code>upsertClient</code>, …). Components call functions; tests mock the module. This also centralizes the <code>realtor_id</code> scoping now copy-pasted per query.</p>
+  </div>
+
+  <div class="finding warn">
+    <h3><span class="tag warn">Warning</span> Duplicated <code>escapeHtml</code> (DRY / coupling by copy)</h3>
+    <div class="loc"><code>lib/resend/sendClientEmail.ts:8-15</code> ≡ <code>lib/resend/sendFollowUpEmail.ts:7-14</code></div>
+    <p>The identical 5-replace HTML escaper is defined in both mailer files. Two copies drift; a fix to one (e.g. escaping backticks) silently misses the other.</p>
+    <p><strong>Fix:</strong> move to <code>lib/html.ts</code> (or <code>lib/resend/escape.ts</code>) and import in both. Consider a shared <code>renderEmailShell()</code> too — both files hand-roll the same <code>&lt;div&gt;…&lt;hr&gt;…Really CRM&lt;/p&gt;</code> footer.</p>
+  </div>
+
+  <div class="finding warn">
+    <h3><span class="tag warn">Warning</span> Rate limiter is a module-global <code>Map</code> — hard to test &amp; wrong on serverless</h3>
+    <div class="loc"><code>lib/rateLimit.ts:2</code></div>
+    <p>State lives in a top-level <code>Map</code> that no test can reset between cases, and each Vercel lambda instance keeps its own copy — the “10/min” limit is really “10/min <em>per warm instance</em>.” The file’s own comment admits this.</p>
+    <p><strong>Fix:</strong> for testability, accept an injectable store or expose a <code>reset()</code>; for correctness under load, move to Upstash Redis as the comment already advises.</p>
+  </div>
+
+  <div class="finding warn">
+    <h3><span class="tag warn">Warning</span> <code>ClientForm</code> calls <code>watch('sale_type')</code> inside <code>.map()</code></h3>
+    <div class="loc"><code>components/clients/ClientForm.tsx:271</code> (ESLint: <code>react-hooks/incompatible-library</code>, React Compiler skips memoizing the component)</div>
+    <p>Calling <code>watch()</code> inside a render-loop subscribes on every iteration and defeats the React Compiler for the whole component. Hoist one <code>const saleType = watch('sale_type')</code> above the <code>.map()</code>.</p>
+  </div>
+
+  <div class="finding info">
+    <h3><span class="tag info">Info</span> Stale generated artifacts in the working tree</h3>
+    <div class="loc"><code>ruvector.db</code> (1.5 MB) · <code>.audit/</code> · <code>tsconfig.tsbuildinfo</code> · <code>landing/</code></div>
+    <p>All correctly <code>.gitignore</code>d (verified: none are tracked), so no repo bloat — but they clutter the tree and <code>ruvector.db</code> is a 1.5 MB binary from tooling unrelated to the app. Safe to delete locally if the ruflo/codegraph tooling isn’t in active use.</p>
+  </div>
+
+  <div class="finding info">
+    <h3><span class="tag info">Info</span> Minor: unused destructure + shallow-ish wrappers</h3>
+    <div class="loc"><code>lib/claude/propertyMatch.ts:268</code></div>
+    <p><code>_score</code> flagged unused — it’s an intentional discard in <code>.map(({ score: _score, ...rest }) =&gt; rest)</code>; harmless, silence with an eslint-disable or drop the alias. Otherwise no genuinely shallow modules were found: <code>rateLimit</code>, <code>uploadFile</code>, and the supabase helpers each carry real logic proportional to their surface.</p>
+  </div>
+
+  <h2>3 · Coupling Heatmap</h2>
+  <div class="mermaid">
+graph LR
+  subgraph "Healthy — pure, injectable"
+    A1["propertyMatch.ts"]:::good
+    A2["email/templates.ts"]:::good
+  end
+  subgraph "Coupled — DB reference baked in"
+    B1["12 client components"]:::warn
+    B2["rateLimit global Map"]:::warn
+  end
+  subgraph "Duplicated"
+    C1["escapeHtml x2"]:::crit
+    C2["email HTML shell x2"]:::warn
+  end
+  classDef good fill:#132a17,stroke:#3fb950,color:#d6f5d6;
+  classDef warn fill:#2a2410,stroke:#e3b341,color:#f3e2b0;
+  classDef crit fill:#2a1414,stroke:#f85149,color:#ffd2ce;
+  </div>
+
+  <h2>4 · Priority &amp; Effort</h2>
+  <table>
+    <thead><tr><th>#</th><th>Finding</th><th>Severity</th><th>Effort</th><th>Payoff</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Stale Claude docs / dir name / env</td><td style="color:var(--crit)">Critical</td><td>S</td><td>Stops misleading every future reader</td></tr>
+      <tr><td>2</td><td>Delete qwen-comment.mjs + trim JSDoc</td><td style="color:var(--crit)">Critical</td><td>S–M</td><td>Removes the slop factory + noise</td></tr>
+      <tr><td>3</td><td>Extract data layer from components</td><td style="color:var(--crit)">Critical</td><td>M–L</td><td>Unlocks unit tests, cuts coupling</td></tr>
+      <tr><td>4</td><td>Dedupe escapeHtml + email shell</td><td style="color:var(--warn)">Warning</td><td>S</td><td>One source of truth for escaping</td></tr>
+      <tr><td>5</td><td>Rate limiter: injectable / Redis</td><td style="color:var(--warn)">Warning</td><td>S–M</td><td>Testable + correct under scale</td></tr>
+      <tr><td>6</td><td>Hoist watch() out of map()</td><td style="color:var(--warn)">Warning</td><td>XS</td><td>Re-enables React Compiler memo</td></tr>
+    </tbody>
+  </table>
+
+  <p class="muted" style="margin-top:26px">Scan was read-only. No files were modified. Effort: S≈&lt;1h, M≈half-day, L≈1–2 days.</p>
+</div>
+
+<footer>Really-CRM architecture review · generated read-only · Mermaid 11 · 2026-08-13</footer>
+</body>
+</html>
