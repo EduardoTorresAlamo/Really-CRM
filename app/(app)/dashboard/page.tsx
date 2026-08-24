@@ -6,8 +6,9 @@ import RecentClients from '@/components/dashboard/RecentClients'
 import type { Client } from '@/types/client'
 import { format } from 'date-fns'
 
-// Dashboard — landing screen after login. Fires six independent Supabase queries concurrently,
-// all scoped by realtor_id, feeding StatsCards (counts), TodayFollowUps, and RecentClients.
+// Dashboard — landing screen after login. The four stat counts come from one get_dashboard_stats
+// RPC (single round-trip) instead of four separate count queries; the two list queries run
+// alongside it. All scoped by realtor_id, feeding StatsCards, TodayFollowUps, and RecentClients.
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,22 +16,27 @@ export default async function DashboardPage() {
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
-  // All 6 queries are independent — run them concurrently to avoid waterfall latency
   const [
-    { count: totalClients },
-    { count: activeBuyers },
-    { count: activeSellers },
-    { count: overdueFollowUps },
+    { data: stats },
     { data: todayFollowUps },
     { data: recentClients },
   ] = await Promise.all([
-    supabase.from('clients').select('*', { count: 'exact', head: true }).eq('realtor_id', user.id),
-    supabase.from('clients').select('*', { count: 'exact', head: true }).eq('realtor_id', user.id).eq('client_type', 'buyer').eq('status', 'active'),
-    supabase.from('clients').select('*', { count: 'exact', head: true }).eq('realtor_id', user.id).eq('client_type', 'seller').eq('status', 'active'),
-    supabase.from('follow_ups').select('*', { count: 'exact', head: true }).eq('realtor_id', user.id).eq('completed', false).lt('scheduled_date', today),
+    supabase.rpc('get_dashboard_stats', { p_realtor_id: user.id, p_today: today }),
     supabase.from('follow_ups').select('id, notes, clients(id, name)').eq('realtor_id', user.id).eq('scheduled_date', today).eq('completed', false).order('created_at', { ascending: true }),
     supabase.from('clients').select('*').eq('realtor_id', user.id).order('created_at', { ascending: false }).limit(5),
   ])
+
+  const {
+    totalClients = 0,
+    activeBuyers = 0,
+    activeSellers = 0,
+    overdueFollowUps = 0,
+  } = (stats ?? {}) as {
+    totalClients?: number
+    activeBuyers?: number
+    activeSellers?: number
+    overdueFollowUps?: number
+  }
 
   return (
     <div className="space-y-8">
