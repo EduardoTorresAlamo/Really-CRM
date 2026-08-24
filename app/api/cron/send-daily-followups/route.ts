@@ -47,7 +47,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ sent: 0 })
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://yourapp.com'
+  // No fallback domain — a wrong host in emailed links is a phishing vector. Fail loudly.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    console.error('[cron] NEXT_PUBLIC_APP_URL is not configured')
+    return NextResponse.json({ error: 'Service misconfigured' }, { status: 500 })
+  }
   let sent = 0
 
   for (const fu of followUps) {
