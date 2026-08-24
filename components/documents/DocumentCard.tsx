@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { deleteDocumentAction, updateDocumentStatusAction } from '@/app/actions/documents'
 import { getSignedUrl } from '@/lib/storage/uploadFile'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -42,7 +42,6 @@ interface DocumentCardProps {
  * @returns A card JSX element displaying document metadata and action controls.
  */
 export default function DocumentCard({ doc, onDelete, onStatusChange }: DocumentCardProps) {
-  const supabase = createClient()
   const [deleting, setDeleting] = useState(false)
   const [downloading, setDownloading] = useState(false)
 
@@ -68,15 +67,15 @@ export default function DocumentCard({ doc, onDelete, onStatusChange }: Document
   async function handleDelete() {
     if (!confirm('Delete this document?')) return
     setDeleting(true)
-    const { error } = await supabase.from('documents').delete().eq('id', doc.id)
-    if (error) { toast.error('Failed to delete'); setDeleting(false); return }
+    const result = await deleteDocumentAction(doc.id, doc.client_id)
+    if (!result.ok) { toast.error(result.error); setDeleting(false); return }
     toast.success('Document deleted')
     onDelete(doc.id)
   }
 
   async function handleStatusChange(status: DocStatus) {
-    const { error } = await supabase.from('documents').update({ doc_status: status }).eq('id', doc.id)
-    if (error) { toast.error('Failed to update status'); return }
+    const result = await updateDocumentStatusAction(doc.id, doc.client_id, status)
+    if (!result.ok) { toast.error(result.error); return }
     onStatusChange(doc.id, status)
     toast.success('Status updated')
   }

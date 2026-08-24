@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClientAction, updateClientAction } from '@/app/actions/clients'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -93,9 +93,8 @@ interface ClientFormProps {
 // strings and coerced to numbers (empty -> null) in onSubmit. Property types/locations live in
 // local state (multi-select toggles don't map to form inputs). Each write also inserts a
 // client_history row for the audit trail. mode drives insert+"created" vs update+"edited".
-export default function ClientForm({ client, userId, mode }: ClientFormProps) {
+export default function ClientForm({ client, mode }: ClientFormProps) {
   const router = useRouter()
-  const supabase = createClient()
   const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<PropertyType[]>(
     client?.property_types ?? []
   )
@@ -153,9 +152,9 @@ export default function ClientForm({ client, userId, mode }: ClientFormProps) {
   }
 
   async function onSubmit(values: FormValues) {
-    // Coerce empty strings to null so the DB doesn't store empty strings for optional numeric fields
+    // realtor_id is set server-side by the action from the session — never trusted from the client.
+    // Empty strings are coerced to null so optional fields aren't stored as empty strings.
     const payload = {
-      realtor_id: userId,
       name: values.name,
       email: values.email || null,
       phone: values.phone || null,
@@ -174,29 +173,13 @@ export default function ClientForm({ client, userId, mode }: ClientFormProps) {
     }
 
     if (mode === 'create') {
-      const { data, error } = await supabase.from('clients').insert(payload).select().single()
-      if (error) { toast.error('Failed to create client'); return }
-
-      await supabase.from('client_history').insert({
-        client_id: data.id,
-        realtor_id: userId,
-        event_type: 'created',
-        description: `Client "${values.name}" was created`,
-      })
-
+      const result = await createClientAction(payload)
+      if (!result.ok) { toast.error(result.error); return }
       toast.success('Client created')
-      router.push(`/clients/${data.id}`)
+      router.push(`/clients/${result.id}`)
     } else if (client) {
-      const { error } = await supabase.from('clients').update(payload).eq('id', client.id)
-      if (error) { toast.error('Failed to update client'); return }
-
-      await supabase.from('client_history').insert({
-        client_id: client.id,
-        realtor_id: userId,
-        event_type: 'edited',
-        description: `Client profile was updated`,
-      })
-
+      const result = await updateClientAction(client.id, payload)
+      if (!result.ok) { toast.error(result.error); return }
       toast.success('Client updated')
       router.push(`/clients/${client.id}`)
     }
