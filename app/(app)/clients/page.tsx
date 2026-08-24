@@ -52,7 +52,10 @@ export default async function ClientsPage({
     .order('created_at', { ascending: false })
 
   if (params.search) {
-    query = query.ilike('name', `%${params.search}%`)
+    // Escape LIKE wildcards so a user searching "50%" or "a_b" gets a literal match
+    // instead of a pattern (backslash first, then the wildcard metacharacters)
+    const escaped = params.search.replace(/[\\%_]/g, (ch) => `\\${ch}`)
+    query = query.ilike('name', `%${escaped}%`)
   }
   if (params.status) {
     query = query.eq('status', params.status)
