@@ -28,21 +28,58 @@ const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
 
 // Budget/bedrooms/bathrooms are strings here because HTML inputs always return strings.
 // They get converted to numbers (or null) in onSubmit before hitting the DB.
-const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.union([z.string().email('Invalid email'), z.literal('')]).optional(),
-  phone: z.string().optional(),
-  client_type: z.enum(['buyer', 'seller']),
-  status: z.enum(['active', 'inactive', 'closed']),
-  sale_type: z.enum(['cash', 'loan', '']).optional(),
-  budget_min: z.string().optional(),
-  budget_max: z.string().optional(),
-  bedrooms_min: z.string().optional(),
-  bedrooms_max: z.string().optional(),
-  bathrooms_min: z.string().optional(),
-  bathrooms_max: z.string().optional(),
-  notes: z.string().optional(),
-})
+
+// Optional numeric text field: empty is allowed, otherwise must be a finite, non-negative number.
+const numericField = z
+  .string()
+  .optional()
+  .refine(
+    (v) => v == null || v === '' || (Number.isFinite(Number(v)) && Number(v) >= 0),
+    { message: 'Must be a non-negative number' }
+  )
+
+// Empty string, or a finite non-negative number.
+function toNumberOrNull(v: string | undefined): number | null {
+  if (v == null || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+const schema = z
+  .object({
+    name: z.string().min(1, 'Name is required'),
+    email: z.union([z.string().email('Invalid email'), z.literal('')]).optional(),
+    phone: z.string().optional(),
+    client_type: z.enum(['buyer', 'seller']),
+    status: z.enum(['active', 'inactive', 'closed']),
+    sale_type: z.enum(['cash', 'loan', '']).optional(),
+    budget_min: numericField,
+    budget_max: numericField,
+    bedrooms_min: numericField,
+    bedrooms_max: numericField,
+    bathrooms_min: numericField,
+    bathrooms_max: numericField,
+    notes: z.string().optional(),
+  })
+  // Cross-field range checks: min must not exceed max when both are provided.
+  .superRefine((v, ctx) => {
+    const pairs: [keyof typeof v, keyof typeof v][] = [
+      ['budget_min', 'budget_max'],
+      ['bedrooms_min', 'bedrooms_max'],
+      ['bathrooms_min', 'bathrooms_max'],
+    ]
+    for (const [minKey, maxKey] of pairs) {
+      const min = toNumberOrNull(v[minKey] as string | undefined)
+      const max = toNumberOrNull(v[maxKey] as string | undefined)
+      if (min != null && max != null && min > max) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Min cannot be greater than max',
+          path: [maxKey],
+        })
+      }
+    }
+  })
 
 type FormValues = z.infer<typeof schema>
 
@@ -125,12 +162,12 @@ export default function ClientForm({ client, userId, mode }: ClientFormProps) {
       client_type: values.client_type as ClientType,
       status: values.status as ClientStatus,
       sale_type: (values.sale_type as SaleType) || null,
-      budget_min: values.budget_min !== '' ? Number(values.budget_min) : null,
-      budget_max: values.budget_max !== '' ? Number(values.budget_max) : null,
-      bedrooms_min: values.bedrooms_min !== '' ? Number(values.bedrooms_min) : null,
-      bedrooms_max: values.bedrooms_max !== '' ? Number(values.bedrooms_max) : null,
-      bathrooms_min: values.bathrooms_min !== '' ? Number(values.bathrooms_min) : null,
-      bathrooms_max: values.bathrooms_max !== '' ? Number(values.bathrooms_max) : null,
+      budget_min: toNumberOrNull(values.budget_min),
+      budget_max: toNumberOrNull(values.budget_max),
+      bedrooms_min: toNumberOrNull(values.bedrooms_min),
+      bedrooms_max: toNumberOrNull(values.bedrooms_max),
+      bathrooms_min: toNumberOrNull(values.bathrooms_min),
+      bathrooms_max: toNumberOrNull(values.bathrooms_max),
       notes: values.notes || null,
       property_types: selectedPropertyTypes.length > 0 ? selectedPropertyTypes : null,
       preferred_locations: locations.length > 0 ? locations : null,
