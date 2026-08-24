@@ -37,12 +37,19 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // Prefixes that require an authenticated session. Keep every protected app route here.
+  // /auth/callback is intentionally absent — it must stay public for the magic link to land.
+  const PROTECTED_PREFIXES = [
+    '/dashboard',
+    '/clients',
+    '/profile',
+    '/property-match',
+    '/pipeline',
+    '/templates',
+  ]
+
   // Redirect unauthenticated users away from protected app routes
-  // /auth/callback is intentionally absent here — it must stay public for the magic link to land
-  if ((!user && pathname.startsWith('/dashboard')) ||
-      (!user && pathname.startsWith('/clients')) ||
-      (!user && pathname.startsWith('/profile')) ||
-      (!user && pathname.startsWith('/property-match'))) {
+  if (!user && PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
