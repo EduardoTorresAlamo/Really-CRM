@@ -20,7 +20,7 @@ create index on clients(stage);
 -- only stores realtor-authored custom templates.
 -- ============================================================
 create table email_templates (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   realtor_id  uuid not null references profiles(id) on delete cascade,
   name        text not null,
   subject     text not null,
