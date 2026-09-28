@@ -220,13 +220,19 @@ create policy "Delete own documents" on storage.objects
 create policy "Update own avatar" on storage.objects
   for update using (
     bucket_id = 'avatars' and
-    auth.uid() = owner
+    auth.uid()::text = (storage.foldername(name))[1]
+  ) with check (
+    bucket_id = 'avatars' and
+    auth.uid()::text = (storage.foldername(name))[1]
   );
 
 create policy "Update own documents" on storage.objects
   for update using (
     bucket_id = 'documents' and
-    auth.uid() = owner
+    auth.uid()::text = (storage.foldername(name))[1]
+  ) with check (
+    bucket_id = 'documents' and
+    auth.uid()::text = (storage.foldername(name))[1]
   );
 
 -- ============================================================
