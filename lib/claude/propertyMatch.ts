@@ -12,6 +12,7 @@
  */
 import type { ParsedProperty, MatchResult } from '@/types/propertyMatch'
 import type { Client, PropertyType, SaleType } from '@/types/client'
+import { assertUrlAllowed } from '@/lib/security/ssrf'
 
 /** Maps free-text keywords found in a listing to a canonical PropertyType. */
 const PROPERTY_TYPE_KEYWORDS: Record<PropertyType, string[]> = {
@@ -95,6 +96,50 @@ function htmlToText(html: string): string {
     .trim()
 }
 
+/** Hard cap on redirect hops followed by safeFetchHtml. */
+const MAX_REDIRECT_HOPS = 5
+
+/** Largest amount of HTML we keep from a listing page. */
+const MAX_HTML_BYTES = 500_000
+
+/**
+ * Fetches a listing page while keeping the SSRF guard in force across redirects.
+ *
+ * `redirect: 'manual'` stops fetch from silently following a 30x, so every hop --
+ * not just the URL the caller validated -- goes through assertUrlAllowed() before a
+ * request is made. Without this, a public host can 302 straight to 169.254.169.254
+ * (AWS/GCP/Vercel metadata) or an internal RFC 1918 service. Returns the HTML, or
+ * null when the page is unreadable (non-2xx, redirect loop, blocked target).
+ */
+async function safeFetchHtml(startUrl: string, signal: AbortSignal): Promise<string | null> {
+  let currentUrl = startUrl
+
+  for (let hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
+    // Revalidate EVERY hop, including the first: assertUrlAllowed also rejects
+    // non-http(s) schemes, so a `Location: file:///etc/passwd` never gets fetched.
+    await assertUrlAllowed(currentUrl)
+
+    const res = await fetch(currentUrl, {
+      signal,
+      redirect: 'manual',
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReallyCRM/1.0)' },
+    })
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location')
+      if (!location) return null
+      // Resolve relative Location values against the URL we just requested.
+      currentUrl = new URL(location, currentUrl).toString()
+      continue
+    }
+
+    if (!res.ok) return null
+    return (await res.text()).slice(0, MAX_HTML_BYTES)
+  }
+
+  return null // too many hops -- redirect loop or deliberate chain
+}
+
 // Extracts structured property data from a listing URL — best-effort HTML scrape with a short
 // timeout, falling back to the URL slug. Fields that can't be determined are returned as null.
 export async function parsePropertyListing(url: string): Promise<ParsedProperty> {
@@ -104,17 +149,15 @@ export async function parsePropertyListing(url: string): Promise<ParsedProperty>
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
-    const res = await fetch(safeUrl, {
-      signal: controller.signal,
-      headers: { 'user-agent': 'Mozilla/5.0 (compatible; ReallyCRM/1.0)' },
-    })
-    clearTimeout(timeout)
-    if (res.ok) {
-      const html = (await res.text()).slice(0, 500_000)
-      pageText = htmlToText(html)
+    try {
+      const html = await safeFetchHtml(safeUrl, controller.signal)
+      if (html) pageText = htmlToText(html)
+    } finally {
+      clearTimeout(timeout)
     }
   } catch {
-    // Network failure, timeout, blocked bot, etc. -- fall back to URL-only parsing.
+    // Network failure, timeout, blocked bot, SSRF-rejected redirect, etc. --
+    // fall back to URL-only parsing.
   }
 
   // Decode the URL itself so slug words ("3-bed-guaynabo") feed the heuristics too.

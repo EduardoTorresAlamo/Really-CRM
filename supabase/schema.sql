@@ -216,3 +216,53 @@ create policy "Delete own documents" on storage.objects
     bucket_id = 'documents' and
     auth.uid()::text = (storage.foldername(name))[1]
   );
+
+create policy "Update own avatar" on storage.objects
+  for update using (
+    bucket_id = 'avatars' and
+    auth.uid() = owner
+  );
+
+create policy "Update own documents" on storage.objects
+  for update using (
+    bucket_id = 'documents' and
+    auth.uid() = owner
+  );
+
+-- ============================================================
+-- AUTH -> PROFILES BOOTSTRAP
+-- Auto-create a profiles row when a user is created in auth.users.
+--
+-- Login uses signInWithOtp without shouldCreateUser: false, so any email that
+-- requests a magic link becomes an auth.users row. Every realtor-owned table
+-- (clients, follow_ups, ...) has realtor_id -> profiles(id), so a user without a
+-- profile row cannot insert anything until they manually save /profile.
+-- Mirrors supabase/migrations/20260920_handle_new_user_trigger.sql; the backfill
+-- there is a repair step for existing users and is a no-op on a fresh restore.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, email, phone, photo_url)
+  VALUES (
+    NEW.id,
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'name', ''), split_part(NEW.email, '@', 1)),
+    NEW.email,
+    NEW.raw_user_meta_data->>'phone',
+    NEW.raw_user_meta_data->>'avatar_url'
+  )
+  -- Bare ON CONFLICT covers both the id PK and uq_profiles_email; a duplicate
+  -- must never abort the auth insert.
+  ON CONFLICT DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

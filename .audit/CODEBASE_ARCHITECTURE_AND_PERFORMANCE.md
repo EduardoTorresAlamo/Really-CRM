@@ -1,197 +1,176 @@
-# Reporte de Auditoría: Arquitectura, Rendimiento y Código Muerto (Architecture, Performance & Dead Code)
-**Repositorio Auditado:** Really-CRM ([`Really-CRM`](file:///Users/eduardotorres/Developer/Really-CRM))  
-**Fecha de Evaluación:** 20 de Agosto, 2026  
-**Alcance:** Arquitectura de componentes, patrones Next.js 16 App Router, cuellos de botella de rendimiento, estado en cliente, código huérfano y configuración de herramientas.  
+# REPORTE DE AUDITORÍA: ARQUITECTURA Y RENDIMIENTO
+**Proyecto:** Really-CRM  
+**Fecha:** 22 de Septiembre de 2026  
+**Alcance:** Arquitectura Next.js 16 (App Router, Turbopack), React 19 Compiler, Server Actions, Rendimiento Serverless, Cuellos de Botella y Escalabilidad  
+**Clasificación:** 🔴 CRITICAL | 🟠 HIGH | 🟡 MEDIUM | 🟢 LOW  
 
 ---
 
-## 1. Resumen Ejecutivo de Arquitectura y Rendimiento
+## 1. EVALUACIÓN ARQUITECTÓNICA
 
-Really-CRM presenta una estructura basada en Next.js 16 con separación de rutas autenticadas `app/(app)` y públicas `app/(auth)`. El diseño visual utiliza Tailwind CSS y componentes de UI basados en `@base-ui/react`.
-
-No obstante, se evidencian **problemas arquitectónicos de acoplamiento directo entre la interfaz y la base de datos**, **cascadas de consultas HTTP múltiples en el Dashboard**, **falta de paginación en listados grandes**, **importaciones dinámicas no cacheadas en controladores de eventos**, y **artefactos muertos que aumentan el peso del repositorio**.
-
----
-
-## 2. Matriz de Hallazgos
-
-| ID | Categoría | Título del Hallazgo | Severidad | Ubicación en Código |
-| :--- | :--- | :--- | :---: | :--- |
-| **ARCH-01** | Arquitectura | Acoplamiento Directo UI-Base de Datos sin Capa de Servicios | 🔴 **HIGH** | Múltiples componentes `components/**/*.tsx` |
-| **PERF-01** | Rendimiento | Cascada de 6 Consultas HTTP en Carga del Dashboard | 🔴 **HIGH** | [`app/(app)/dashboard/page.tsx:26-33`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/dashboard/page.tsx#L26-L33) |
-| **PERF-02** | Rendimiento | Ausencia de Paginación en Listado de Clientes | 🔴 **HIGH** | [`app/(app)/clients/page.tsx:48-64`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/clients/page.tsx#L48-L64) |
-| **PERF-03** | Rendimiento | Carga Eager Innecesaria de Todas las Pestañas de Cliente | 🟡 **MEDIUM** | [`app/(app)/clients/[id]/page.tsx:29-34`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/clients/%5Bid%5D/page.tsx#L29-L34) |
-| **PERF-04** | Rendimiento | Consultas Duplicadas en Montaje de TemplatePicker | 🟢 **LOW** | [`components/templates/TemplatePicker.tsx:32-50`](file:///Users/eduardotorres/Developer/Really-CRM/components/templates/TemplatePicker.tsx#L32-L50) |
-| **ARCH-02** | Arquitectura | Verificación Duplicada de Sesión en Cada Página Server | 🟡 **MEDIUM** | Múltiples `app/(app)/**/page.tsx` |
-| **ARCH-03** | Arquitectura | Nomenclatura Obsoleta en Módulo Local de Matching | 🟡 **MEDIUM** | [`lib/claude/propertyMatch.ts`](file:///Users/eduardotorres/Developer/Really-CRM/lib/claude/propertyMatch.ts) |
-| **ARCH-04** | Rendimiento | Importación Dinámica `import()` en Event Handlers | 🟡 **MEDIUM** | [`components/clients/tabs/FollowUpsTab.tsx:62`](file:///Users/eduardotorres/Developer/Really-CRM/components/clients/tabs/FollowUpsTab.tsx#L62) |
-| **DEAD-01** | Código Muerto | Componente Legado Huérfano (`ClientList.tsx`) | 🟡 **MEDIUM** | [`components/clients/ClientList.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/clients/ClientList.tsx) |
-| **DEAD-02** | Código Muerto | Base de Datos Binaria SQLite Huérfana (`ruvector.db` - 1.58 MB) | 🟡 **MEDIUM** | [`ruvector.db`](file:///Users/eduardotorres/Developer/Really-CRM/ruvector.db) |
-| **DEAD-03** | Configuración | Brecha de Alcance ESLint para Artefactos de `landing/` | 🟢 **LOW** | [`eslint.config.mjs:9-15`](file:///Users/eduardotorres/Developer/Really-CRM/eslint.config.mjs#L9-L15) |
-| **DEAD-04** | Calidad Código | Variable No Utilizada `_score` en Algoritmo de Matching | 🟢 **LOW** | [`lib/claude/propertyMatch.ts:250`](file:///Users/eduardotorres/Developer/Really-CRM/lib/claude/propertyMatch.ts#L250) |
+### 1.1 Modelo de Renderizado (Server Components vs Client Components)
+- **Diagnóstico:** El proyecto adopta una estructura sólida alineada con los estándares modernos de Next.js App Router:
+  - Las páginas principales (`app/(app)/*`) son Server Components asíncronos (`async function Page()`) que ejecutan consultas directas a Supabase usando `createClient()` de servidor (`lib/supabase/server.ts`).
+  - Las credenciales sensibles (`SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`) se mantienen exclusivamente en el entorno de servidor y jamás se filtran a los paquetes del navegador.
+  - El layout compartido `app/(app)/layout.tsx` obtiene la fila de perfil del realtor durante el SSR, pasando el objeto como prop a `TopBar.tsx`, lo que previene parpadeos de contenido (FOUC) y cascadas de red (waterfalls).
+  - El filtrado de clientes en `/clients` opera completamente en el servidor mediante `searchParams` y paginación acotada con `range(from, to)`.
 
 ---
 
-## 3. Análisis Detallado de Arquitectura
-
-### ARCH-01: Acoplamiento Directo UI-Base de Datos sin Capa de Servicios
-- **Severidad:** 🔴 **HIGH**
-- **Ubicaciones:**
-  - [`components/clients/ClientForm.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/clients/ClientForm.tsx)
-  - [`components/documents/DocumentCard.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/documents/DocumentCard.tsx)
-  - [`components/follow-ups/FollowUpCard.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/follow-ups/FollowUpCard.tsx)
-  - [`components/pipeline/PipelineBoard.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/pipeline/PipelineBoard.tsx)
-  - [`components/profile/ProfileForm.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/profile/ProfileForm.tsx)
-  - [`components/templates/TemplatesManager.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/templates/TemplatesManager.tsx)
-- **Problema:**  
-  Los componentes cliente importan directamente `@/lib/supabase/client` y ejecutan consultas SQL/PostgREST en línea (`supabase.from('...').insert(...)`, `.update()`, `.delete()`).
-- **Consecuencias:**
-  1. **Dificultad de Testing:** Es imposible escribir pruebas unitarias de componentes sin mockear llamadas complejas de la librería de Supabase.
-  2. **Reglas de Negocio Dispersas:** Si cambia la estructura de una tabla o se requiere validación previa a una mutación, es necesario editar múltiples componentes React en lugar de un único servicio central.
-- **Recomendación:**  
-  Migrar las mutaciones a Server Actions tipadas de Next.js (ej. `app/actions/clients.ts`, `app/actions/documents.ts`) o a módulos de servicios (`lib/services/`).
-
----
-
-### ARCH-02: Verificación Duplicada de Sesión en Cada Página Server
+### 1.2 Disparidad Arquitectónica en la Capa de Mutaciones
 - **Severidad:** 🟡 **MEDIUM**
-- **Ubicaciones:**  
-  [`app/(app)/clients/page.tsx:44`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/clients/page.tsx#L44), [`app/(app)/dashboard/page.tsx:13`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/dashboard/page.tsx#L13), [`app/(app)/pipeline/page.tsx:18`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/pipeline/page.tsx#L18), [`app/(app)/profile/page.tsx:18`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/profile/page.tsx#L18), [`app/(app)/templates/page.tsx:17`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/templates/page.tsx#L17), etc.
-- **Problema:**  
-  Cada Server Component repite manualmente `const { data: { user } } = await supabase.auth.getUser(); if (!user) redirect('/login')`.
-- **Recomendación:**  
-  Aprovechar la verificación centralizada en [`app/(app)/layout.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/layout.tsx) y en el [`middleware.ts`](file:///Users/eduardotorres/Developer/Really-CRM/middleware.ts), o envolver la llamada de usuario en una utilidad cacheada con `React.cache()`.
-
----
-
-### ARCH-03: Nomenclatura Obsoleta en Módulo Local de Matching
-- **Severidad:** 🟡 **MEDIUM**
-- **Ubicación:** [`lib/claude/propertyMatch.ts`](file:///Users/eduardotorres/Developer/Really-CRM/lib/claude/propertyMatch.ts)
-- **Problema:**  
-  El motor de coincidencia de propiedades fue reemplazado por un algoritmo heurístico y determinista local sin llamadas a APIs externas de IA. Sin embargo, el directorio sigue llamándose `lib/claude/`, generando confusión en la arquitectura.
-- **Recomendación:**  
-  Renombrar el archivo a `lib/property-matching/matcher.ts` y actualizar las importaciones en `app/api/property-match/route.ts`.
-
----
-
-### ARCH-04: Importación Dinámica `import()` en Event Handlers
-- **Severidad:** 🟡 **MEDIUM**
-- **Ubicaciones:** [`components/clients/tabs/FollowUpsTab.tsx:62`](file:///Users/eduardotorres/Developer/Really-CRM/components/clients/tabs/FollowUpsTab.tsx#L62) y [`components/clients/tabs/DocumentsTab.tsx:65`](file:///Users/eduardotorres/Developer/Really-CRM/components/clients/tabs/DocumentsTab.tsx#L65)
-- **Problema:**  
-  Dentro de la función `handleSuccess()`:
-  ```typescript
-  const { createClient } = await import('@/lib/supabase/client')
-  ```
-  `createClient` ya es una dependencia presente en el bundle principal. Realizar un `import()` dinámico en el callback de evento añade latencia asíncrona innecesaria a la respuesta de la interfaz.
-- **Recomendación:**  
-  Importar `createClient` de forma estática en la cabecera del archivo.
-
----
-
-## 4. Análisis Detallado de Rendimiento
-
-### PERF-01: Cascada de 6 Consultas HTTP en Carga del Dashboard
-- **Severidad:** 🔴 **HIGH**
-- **Ubicación:** [`app/(app)/dashboard/page.tsx:26-33`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/dashboard/page.tsx#L26-L33)
-- **Código:**
-  ```typescript
-  const [
-    { count: totalClients },
-    { count: activeBuyers },
-    { count: activeSellers },
-    { count: overdueFollowUps },
-    { data: todayFollowUps },
-    { data: recentClients },
-  ] = await Promise.all([
-    supabase.from('clients').select('*', { count: 'exact', head: true }).eq('realtor_id', user.id),
-    supabase.from('clients').select('*', { count: 'exact', head: true }).eq('realtor_id', user.id).eq('client_type', 'buyer').eq('status', 'active'),
-    supabase.from('clients').select('*', { count: 'exact', head: true }).eq('realtor_id', user.id).eq('client_type', 'seller').eq('status', 'active'),
-    supabase.from('follow_ups').select('*', { count: 'exact', head: true }).eq('realtor_id', user.id).eq('completed', false).lt('scheduled_date', today),
-    supabase.from('follow_ups').select('id, notes, clients(id, name)').eq('realtor_id', user.id).eq('scheduled_date', today).eq('completed', false).order('created_at', { ascending: true }),
-    supabase.from('clients').select('*').eq('realtor_id', user.id).order('created_at', { ascending: false }).limit(5),
-  ])
-  ```
+- **Archivo(s) Afectado(s):**
+  - Mutaciones vía Server Actions: `app/actions/clients.ts`, `app/actions/documents.ts`
+  - Mutaciones directas vía Browser SDK: `components/pipeline/PipelineBoard.tsx:55`, `components/follow-ups/FollowUpCard.tsx:38`, `components/follow-ups/FollowUpForm.tsx:39`, `components/templates/TemplatesManager.tsx:60,70`, `components/profile/ProfileForm.tsx:70`, `components/documents/DocumentUploadDialog.tsx:68`
+- **Diagnóstico:**  
+  Existe una clara fragmentación en el diseño de mutación de datos:
+  1. Para `clients` y `documents` (borrado/estado), las mutaciones se ejecutan mediante Server Actions en `app/actions/`. Esto permite revalidar la caché del servidor (`revalidatePath`), registrar auditorías en un entorno controlado y abstraer la interacción con la base de datos.
+  2. Para el cambio de etapa en Pipeline, las acciones de Follow-ups (crear, completar, eliminar), la creación/edición de plantillas y la actualización del perfil, los componentes de cliente instancian directamente el cliente de Supabase para navegador (`createClient()` de `@/lib/supabase/client`) y realizan mutaciones SQL directamente desde el cliente.
 - **Impacto:**  
-  Aunque se ejecutan con `Promise.all`, cada consulta genera una petición HTTP independiente contra el endpoint de PostgREST de Supabase. Esto satura el pool de conexiones y suma latencias de red. Además, `count: 'exact'` fuerza a Postgres a calcular el conteo exacto en cada visita.
+  - Dificulta la revalidación centralizada de rutas en el servidor.
+  - Provoca que la auditoría de cambios en el pipeline dependa exclusivamente de triggers de base de datos en lugar de la lógica de aplicación.
+  - Expone nombres de tablas y estructuras de consulta en el código JavaScript del cliente.
 - **Recomendación:**  
-  Reemplazar los 4 conteos con la función RPC `get_dashboard_stats(user.id, today)` que devuelve todos los totales en una única llamada de base de datos.
+  Estandarizar todas las operaciones de escritura en Server Actions bajo `app/actions/`:
+  - `app/actions/pipeline.ts` -> `updateClientStageAction(id, stage)`
+  - `app/actions/followUps.ts` -> `createFollowUpAction`, `completeFollowUpAction`, `deleteFollowUpAction`
+  - `app/actions/templates.ts` -> `saveTemplateAction`, `deleteTemplateAction`
+  - `app/actions/profile.ts` -> `saveProfileAction`
 
 ---
 
-### PERF-02: Ausencia de Paginación en Listado de Clientes
-- **Severidad:** 🔴 **HIGH**
-- **Ubicación:** [`app/(app)/clients/page.tsx:48-64`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/clients/page.tsx#L48-L64)
-- **Problema:**  
-  La consulta descarga todos los registros del agente sin límite (`.select('*')` sin `.range()` o `.limit()`).
+### 1.3 Deprecación de Convención `middleware.ts` en Next.js 16
+- **Severidad:** 🟡 **MEDIUM**
+- **Archivo Afectado:** `middleware.ts`
+- **Diagnóstico:**  
+  Durante la compilación (`next build`), Next.js 16 emite la advertencia formal:  
+  `⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy`
+- **Recomendación:**  
+  Renombrar `middleware.ts` a `proxy.ts` (exportando `export async function proxy(request: NextRequest)`) para alinearse con la especificación estable de Next.js 16.
+
+---
+
+### 1.4 Deuda Técnica y Residuos de Claude AI
+- **Severidad:** 🟢 **LOW**
+- **Archivo(s) Afectado(s):** `lib/claude/propertyMatch.ts`, `.env.example`, `next.config.ts`, `AGENTS.md`
+- **Diagnóstico:**  
+  El emparejamiento de propiedades fue reescrito para utilizar expresiones regulares y un algoritmo heurístico local sin dependencias externas ni llamadas de red a modelos LLM. Sin embargo:
+  - El directorio sigue llamándose `lib/claude/`.
+  - En `next.config.ts:9`, la directiva CSP mantiene `https://api.anthropic.com`.
+  - En `AGENTS.md`, la documentación indica erróneamente: `Anthropic Claude API`.
+- **Recomendación:**  
+  Renombrar la carpeta a `lib/matching/` y actualizar la documentación y cabeceras CSP.
+
+---
+
+### 1.5 Ausencia de Suite y Script de Pruebas Automatizadas
+- **Severidad:** 🟢 **LOW**
+- **Archivo(s) Afectado(s):** `package.json`, `AGENTS.md`
+- **Diagnóstico:**  
+  `AGENTS.md` define como regla obligatoria de desarrollo: `Test before merge to main` y lista el comando `npm test`. No obstante, `package.json` **no tiene configurado ningún script `"test"`** y el repositorio no contiene ninguna prueba unitaria ni de integración. La ejecución de `npm test` finaliza con código de error 1: `Missing script: "test"`.
+- **Recomendación:**  
+  Configurar Vitest o Jest con React Testing Library en `package.json` para validar funciones de parseo, algoritmos de coincidencia y Server Actions.
+
+---
+
+## 2. EVALUACIÓN DE RENDIMIENTO
+
+### 2.1 Cuello de Botella Secuencial y Riesgo de Timeout 504 en Bulk Email
+- **Severidad:** 🟠 **HIGH**
+- **Archivo Afectado:** `app/api/bulk-email/route.ts:70-95`
+- **Diagnóstico de Latencia:**  
+  El endpoint acepta hasta 100 clientes por petición (`MAX_RECIPIENTS = 100`). Procesa los envíos en un ciclo `for...of` estrictamente secuencial:
+  ```typescript
+  for (const client of (clients ?? []) as Client[]) {
+    // 1. Llamada HTTP a Resend API (200 - 400 ms)
+    await sendClientEmail(...)
+    // 2. Inserción SQL en client_history (40 - 80 ms)
+    await supabase.from('client_history').insert(...)
+  }
+  ```
+  - Para 25 clientes: **6 a 12 segundos**.
+  - Para 50 clientes: **15 a 25 segundos**.
+  - Para 100 clientes: **30 a 50 segundos**.
+- **Impacto Real en Vercel Serverless:**  
+  Las funciones Serverless en Vercel tienen un tiempo de ejecución máximo por defecto de **10 segundos (plan Hobby)** o **15 segundos (plan Pro)**. Como `route.ts` no exporta `maxDuration`, cualquier envío masivo a más de 25-30 clientes supera el límite de ejecución, provocando un error **`504 Gateway Timeout`**.  
+  El cliente recibe una notificación de fallo en el navegador a pesar de que parte del lote ya se transmitió, provocando reintentos accidentales y duplicación de correos.
+- **Remediación:**  
+  Utilizar la API de envío por lotes de Resend (`resend.batch.send`) e insertar todas las filas de historial en una sola transacción:
+  ```typescript
+  // 1. Preparar lote de correos y de historial
+  const emailBatch = validClients.map(c => ({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to: c.email,
+    subject: applyTemplate(subject, { clientName: c.name, propertyAddress: c.preferred_locations?.[0] }),
+    html: renderHtml(...),
+  }))
+
+  const historyRows = validClients.map(c => ({
+    client_id: c.id,
+    realtor_id: user.id,
+    event_type: 'email',
+    description: `Bulk email: ${subject}`,
+    metadata: { channel: 'bulk_email' },
+  }))
+
+  // 2. Enviar en una sola llamada REST masiva
+  await resend.batch.send(emailBatch)
+
+  // 3. Inserción masiva en PostgreSQL
+  await supabase.from('client_history').insert(historyRows)
+  ```
+  *Tiempo total reducido de ~40 segundos a menos de 1.5 segundos para 100 destinatarios.*
+
+---
+
+### 2.2 Desfase de Zona Horaria Servidor en Dashboard Server Component
+- **Severidad:** 🟡 **MEDIUM**
+- **Archivo Afectado:** `app/(app)/dashboard/page.tsx:17`
+- **Diagnóstico:**  
+  El cálculo del día actual se ejecuta como:
+  ```typescript
+  const today = format(new Date(), 'yyyy-MM-dd')
+  ```
+  En los servidores de Vercel configurados en UTC (`00:00:00 UTC`), a partir de las 8:00 PM AST (hora local de Puerto Rico, UTC-4), en el servidor ya es el día siguiente. Las consultas a `get_dashboard_stats` y el filtro `scheduled_date = today` se evalúan con la fecha de mañana, mostrando contadores de 0 tareas para "hoy" durante las noches.
+- **Remediación:**  
+  Obtener la zona horaria del cliente a través de una cookie o cabecera personalizada (`x-timezone`), o pasar la fecha local desde el cliente.
+
+---
+
+### 2.3 Carga Masiva No Acotada ni Paginada en Tablero Kanban
+- **Severidad:** 🟡 **MEDIUM**
+- **Archivo Afectado:** `app/(app)/pipeline/page.tsx:20-25`
+- **Diagnóstico:**  
+  A diferencia de `/clients` (que implementa paginación estricta de 25 elementos por página con `range(from, to)`), la página `/pipeline` ejecuta:
+  ```typescript
+  const { data: clients } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('realtor_id', user.id)
+    .order('created_at', { ascending: false })
+  ```
+  Sin ninguna cláusula `.limit()` ni paginación.
 - **Impacto:**  
-  Para agentes con carteras de más de 500 clientes, la respuesta JSON transferida por red supera varios megabytes, ralentizando el renderizado del servidor y aumentando el consumo de memoria en el navegador.
-- **Recomendación:**  
-  Implementar paginación mediante cursores o páginas numeradas (`limit: 25`, `.range(from, to)`).
+  Para un agente con 500 a 2,000 clientes acumulados, la consulta transfiere cientos de kilobytes o megabytes de JSON sin comprimir en el payload RSC, saturando la memoria del servidor y congelando el DOM móvil al renderizar miles de nodos interactivos en 6 columnas.
+- **Remediación:**  
+  Filtrar por defecto solo clientes activos (`status: 'active'`) o con actividad en los últimos 90 días, o implementar carga virtualizada/paginada por columna en `PipelineBoard.tsx`.
 
 ---
 
-### PERF-03: Carga Eager Innecesaria de Todas las Pestañas de Cliente
-- **Severidad:** 🟡 **MEDIUM**
-- **Ubicación:** [`app/(app)/clients/[id]/page.tsx:29-34`](file:///Users/eduardotorres/Developer/Really-CRM/app/%28app%29/clients/%5Bid%5D/page.tsx#L29-L34)
-- **Problema:**  
-  Al visitar `/clients/[id]`, se ejecutan en paralelo las consultas de `clients`, `documents`, `follow_ups` y `client_history`, a pesar de que el usuario aterriza únicamente en la pestaña "Info".
-- **Recomendación:**  
-  Cargar los datos de `documents`, `follow_ups` y `history` de forma perezosa (lazy load) mediante React Server Actions o subrutas paralelas (`/clients/[id]/documents`, `/clients/[id]/history`).
-
----
-
-### PERF-04: Consultas Duplicadas en Montaje de TemplatePicker
+### 2.4 Invocación de Hook dentro de `.map()` Deshabilita React 19 Compiler
 - **Severidad:** 🟢 **LOW**
-- **Ubicación:** [`components/templates/TemplatePicker.tsx:32-50`](file:///Users/eduardotorres/Developer/Really-CRM/components/templates/TemplatePicker.tsx#L32-L50)
-- **Problema:**  
-  Cada instancia del componente `TemplatePicker` ejecuta un `useEffect` para consultar `email_templates` en mount sin ningún tipo de caché compartida entre componentes cliente.
-- **Recomendación:**  
-  Pasar las plantillas como props desde el Server Component padre o almacenar el resultado en un contexto / SWR / TanStack Query.
-
----
-
-## 5. Análisis de Código Muerto y Desperdicio (Dead Code)
-
-### DEAD-01: Componente Legado Huérfano (`ClientList.tsx`)
-- **Severidad:** 🟡 **MEDIUM**
-- **Ubicación:** [`components/clients/ClientList.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/clients/ClientList.tsx)
-- **Detalle:**  
-  Componente de 128 líneas que fue reemplazado por `SelectableClientList.tsx` (que añade selección múltiple para envíos de correo). No tiene ninguna importación activa en el proyecto.
-- **Acción:**  
-  Eliminar `components/clients/ClientList.tsx`.
-
----
-
-### DEAD-02: Base de Datos Binaria SQLite Huérfana (`ruvector.db` - 1.58 MB)
-- **Severidad:** 🟡 **MEDIUM**
-- **Ubicación:** [`ruvector.db`](file:///Users/eduardotorres/Developer/Really-CRM/ruvector.db)
-- **Detalle:**  
-  Archivo binario SQLite de 1.58 MB ubicado en la raíz del proyecto. No es referenciado por Next.js ni por Supabase.
-- **Acción:**  
-  Eliminar `ruvector.db` y verificar que esté en `.gitignore`.
-
----
-
-### DEAD-03: Brecha de Alcance ESLint para Artefactos de `landing/`
-- **Severidad:** 🟢 **LOW**
-- **Ubicación:** [`eslint.config.mjs:9-15`](file:///Users/eduardotorres/Developer/Really-CRM/eslint.config.mjs#L9-L15)
-- **Detalle:**  
-  Al ejecutar `npm run lint`, ESLint analiza tipos autogenerados de Astro dentro de `landing/.astro/`, arrojando 6 errores de TypeScript.
-- **Acción:**  
-  Agregar `"landing/.astro/**"` y `"landing/dist/**"` a `globalIgnores` en `eslint.config.mjs`.
-
----
-
-### DEAD-04: Variable No Utilizada `_score` en Algoritmo de Matching
-- **Severidad:** 🟢 **LOW**
-- **Ubicación:** [`lib/claude/propertyMatch.ts:250`](file:///Users/eduardotorres/Developer/Really-CRM/lib/claude/propertyMatch.ts#L250)
-- **Detalle:**  
-  `map(({ score: _score, ...rest }) => rest)` genera una advertencia de ESLint (`@typescript-eslint/no-unused-vars`).
-- **Acción:**  
-  Eliminar la desestructuración no utilizada o renombrar a `({ score: _, ...rest })`.
-
----
-
-## 6. Nota sobre Dependencias: `@base-ui/react`
-En revisiones preliminares se reportó `@base-ui/react` como sospechosa de ser dependencia no utilizada. **Se ha verificado exhaustivamente que SÍ está en uso activo**:
-`@base-ui/react` es el paquete base de componentes headless utilizado por los componentes de Shadcn UI en [`components/ui/dialog.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/ui/dialog.tsx), [`button.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/ui/button.tsx), [`select.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/ui/select.tsx), [`popover.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/ui/popover.tsx), [`tabs.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/ui/tabs.tsx) y [`avatar.tsx`](file:///Users/eduardotorres/Developer/Really-CRM/components/ui/avatar.tsx). Por lo tanto, **NO debe ser eliminada**.
+- **Archivo Afectado:** `components/clients/ClientForm.tsx:259`
+- **Diagnóstico:**  
+  En el renderizado de opciones de tipo de venta:
+  ```typescript
+  {[ { value: '', label: 'Not specified' }, ... ].map(({ value, label }) => {
+    const saleType = watch('sale_type')
+    return ( ... )
+  })}
+  ```
+  La llamada a `watch('sale_type')` se ejecuta en cada iteración del bucle. ESLint reporta:  
+  `259:34 warning Compilation Skipped: Use of incompatible library react-hooks/incompatible-library`
+- **Impacto:**  
+  El nuevo compilador de React 19 descarta por completo la memoización automática de este componente, forzando re-renderizados innecesarios del formulario en cada pulsación de tecla.
+- **Remediación:**  
+  Mover `const saleType = watch('sale_type')` fuera del `.map()`, en el cuerpo principal del componente.
