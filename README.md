@@ -1,6 +1,6 @@
 # Really CRM
 
-> ⚠️ **Next.js 16 project.** `cookies()` is async: always `await createClient()`. Route `params` is a Promise: always `await params`. Read [`AGENTS.md`](./AGENTS.md) before modifying Next.js-specific code.
+> ⚠️ **Next.js 16 project.** `cookies()` is async: always `await createClient()`. Route `params` is a Promise: always `await params`.
 
 A real estate CRM for realtors. Manage buyers and sellers from first contact through closing. Track clients, documents, and follow-ups, and use Claude AI to match property listings to your buyer pool.
 
